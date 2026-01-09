@@ -3,12 +3,15 @@
  */
 package sim;
 
-public class App {
-    public String getGreeting() {
-        return "Hello World!";
-    }
+import sim.network.topology.DirectedCM;
+import sim.network.DirectedGraph;
 
+public class App {
     public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
+        int n = 1000;
+        int kHat = 10;
+        long seed = 1234567890;
+        DirectedGraph g = DirectedCM.generate("test", n, kHat, seed);
+        g.printInfo();
     }
 }

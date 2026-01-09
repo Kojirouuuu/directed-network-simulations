@@ -3,12 +3,18 @@
  */
 package sim;
 
+import sim.network.topology.DirectedCM;
+import sim.network.DirectedGraph;
+
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
 class AppTest {
-    @Test void appHasAGreeting() {
-        App classUnderTest = new App();
-        assertNotNull(classUnderTest.getGreeting(), "app should have a greeting");
+    @Test
+    void testDirectedCM() {
+        int n = 1000;
+        int kHat = 10;
+        long seed = 1234567890;
+        DirectedGraph g = DirectedCM.generate("test", n, kHat, seed);
+        g.printInfo();
     }
 }
