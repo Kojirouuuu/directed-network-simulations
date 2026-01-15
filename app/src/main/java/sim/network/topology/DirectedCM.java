@@ -43,7 +43,6 @@ public class DirectedCM {
         }
 
         final int n = ki.length;
-        final Random random = new Random(seed);
 
         long sumKi = 0, sumKo = 0, sumKn = 0;
         for (int u = 0; u < n; u++) {
@@ -87,8 +86,8 @@ public class DirectedCM {
             throw new IllegalStateException("Stub count mismatch: pOut=" + pOut + ", pIn=" + pIn + ", mDir=" + mDir);
         }
 
-        ArrayUtils.shuffle(outStubs, random);
-        ArrayUtils.shuffle(inStubs, random);
+        ArrayUtils.shuffle(outStubs, seed);
+        ArrayUtils.shuffle(inStubs, seed);
 
         // nondirected: kn-stubs を作ってシャッフルし、(0,1),(2,3),... をペアリング
         int[] undStubs = new int[mUnd * 2];
@@ -102,7 +101,7 @@ public class DirectedCM {
             throw new IllegalStateException("Undirected stub count mismatch: pUnd=" + pUnd + ", expected=" + undStubs.length);
         }
 
-        ArrayUtils.shuffle(undStubs, random);
+        ArrayUtils.shuffle(undStubs, seed);
 
         // DirectedGraph に渡す base edge list を作る
         int[] srcs = new int[mBase];
@@ -150,13 +149,13 @@ public class DirectedCM {
         if (n < 0) throw new IllegalArgumentException("n must be non-negative");
         if (kHat < 0) throw new IllegalArgumentException("kHat must be non-negative");
 
+        Random random = new Random(seed);
+
         long target = (long) n * kHat;
         // kn の総和は（最終的に）n*kHat になるので、偶数でないと無向ペアリングできない
         if ((target & 1L) != 0L) {
             throw new IllegalArgumentException("n * kHat must be even");
         }
-
-        Random random = new Random(seed);
 
         int[] ki = new int[n];
         int[] ko = new int[n];

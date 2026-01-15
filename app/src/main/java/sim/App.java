@@ -8,10 +8,17 @@ import sim.network.DirectedGraph;
 
 public class App {
     public static void main(String[] args) {
-        int n = 1000;
-        int kHat = 10;
-        long seed = 1234567890;
-        DirectedGraph g = DirectedCM.generate("test", n, kHat, seed);
-        g.printInfo();
+        for (int itr = 0; itr < 100; itr++) {
+            int n = 100000;
+            int kHat = 10;
+            long seed = 1234567890 + itr;
+            DirectedGraph g = DirectedCM.generate("DirectedCM", n, kHat, seed);
+            g.printInfo();
+            if (!g.isWeaklyConnected()) {
+                System.out.println("Not weakly connected");
+                System.exit(1);
+            }
+        }
+        System.out.println("All weakly connected");
     }
 }

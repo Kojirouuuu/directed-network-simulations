@@ -41,3 +41,11 @@ tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
+
+// SAR クラスを実行するカスタムタスク
+task runSAR(type: JavaExec) {
+    group = 'application'
+    description = 'Runs the SAR simulation'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'sim.SAR'
+}
