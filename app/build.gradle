@@ -49,3 +49,11 @@ task runSAR(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'sim.SAR'
 }
+
+// GraphGen クラスを実行するカスタムタスク
+task runGraphGen(type: JavaExec) {
+    group = 'application'
+    description = 'Runs the GraphGen'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'sim.GraphGen'
+}
