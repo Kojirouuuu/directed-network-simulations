@@ -2,6 +2,7 @@ package sim.network.topology;
 
 import sim.network.DirectedGraph;
 import sim.utils.ArrayUtils;
+import sim.utils.RandomUtils;
 
 import java.util.Random;
 
@@ -18,11 +19,11 @@ import java.util.Random;
  * - 「単純グラフ（多重辺なし・自己ループなし）」が必要なら、生成後にリジェクト/リワイヤリングが必要。
  */
 
-public class DirectedCM {
-    private DirectedCM() {}
+public class DirectedCMOutPow {
+    private DirectedCMOutPow() {}
 
     /**
-     * 一般の次数列 (k_i, k_o, k_n) から Directed + Nondirected CM を生成する。
+     * 一般の次数列 (k_i, k_o, k_n) から Directed CM を生成する。
      *
      * @param name グラフ名
      * @param ki   各ノードの in-directed 次数
@@ -144,52 +145,128 @@ public class DirectedCM {
      * @param seed 乱数シード
      * @return 生成された DirectedGraph
      */
-    public static DirectedGraph generate(String name, int n, int kHat, long seed) {
+    public static DirectedGraph generate(String name, int n, int kHat, double gamma, long seed) {
         if (name == null) throw new IllegalArgumentException("name must be non-null");
         if (n < 0) throw new IllegalArgumentException("n must be non-negative");
         if (kHat < 0) throw new IllegalArgumentException("kHat must be non-negative");
+        if (gamma <= 1.0) {
+            throw new IllegalArgumentException("gamma must be greater than 1.0 for power-law distribution");
+        }
 
         Random random = new Random(seed);
-
-        long target = (long) n * kHat;
-        // kn の総和は（最終的に）n*kHat になるので、偶数でないと無向ペアリングできない
-        if ((target & 1L) != 0L) {
-            throw new IllegalArgumentException("n * kHat must be even");
-        }
 
         int[] ki = new int[n];
         int[] ko = new int[n];
         int[] kn = new int[n];
 
-        // sum(ko) を target=n*kHat に合わせる（分布の歪みは O(sqrt(n)) 程度で、n が大きいほど無視できる）
+        // ki[u] の生成部分を修正
+        // 入次数 (Power Law) の生成
+        double kInMin = 1.0; 
+        double kInMax = n - 1; 
+
+        // 逆変換法のための定数計算
+        double kInMinPow = Math.pow(kInMin, 1.0 - gamma);
+        double kInMaxPow = Math.pow(kInMax, 1.0 - gamma);
+        double oneOverOneMinusGamma = 1.0 / (1.0 - gamma);
+
+        // ユーザーの式の係数を計算
+        double nMinus1Pow2MinusGamma = Math.pow(n - 1, 2.0 - gamma);
+        double coefficient = (2.0 - gamma) / (1.0 - nMinus1Pow2MinusGamma);
+
+        // まず、正規化前の値を生成
+        double[] koRaw = new double[n];
+        double sumKoRaw = 0.0;
+        for (int u = 0; u < n; u++) {
+            double r = random.nextDouble();
+            
+            // 逆関数法による Power Law 乱数 x の生成
+            double x = Math.pow((kInMaxPow - kInMinPow) * r + kInMinPow, oneOverOneMinusGamma);
+            x = Math.max(1.0, Math.min(n - 1, x));
+            
+            // ユーザーの式に従って ki[u] を計算
+            koRaw[u] = coefficient * kHat * Math.pow(x, -gamma);
+            sumKoRaw += koRaw[u];
+        }
+
+        // 平均が kHat になるように正規化（目標合計: n * kHat）
+        long targetSum = (long) n * kHat;
+        double scale = targetSum / sumKoRaw;
+        
         long sumKo = 0;
         for (int u = 0; u < n; u++) {
-            ki[u] = kHat;
-            ko[u] = random.nextInt(2 * kHat + 1); // [0, 2kHat] の一様乱数
+            ko[u] = (int) Math.round(koRaw[u] * scale);
+            if (ko[u] < 1) ko[u] = 1;
+            if (ko[u] > n - 1) ko[u] = n - 1;
             sumKo += ko[u];
         }
 
-        long delta = sumKo - target;
+        // 丸め誤差を調整して、合計が targetSum になるようにする
+        long deltaKo = targetSum - sumKo;
+        while (deltaKo != 0) {
+            int u = random.nextInt(n);
+            if (deltaKo > 0) {
+                if (ko[u] < n - 1) {
+                    ko[u]++;
+                    deltaKo--;
+                    sumKo++;
+                }
+            } else {
+                if (ko[u] > 1) {
+                    ko[u]--;
+                    deltaKo++;
+                    sumKo--;
+                }
+            }
+        }
+
+        // sum(ko) を sum(ki) に合わせる（分布の歪みは O(sqrt(n)) 程度で、n が大きいほど無視できる）
+        long sumKi = 0;
+        for (int u = 0; u < n; u++) {
+            ki[u] = RandomUtils.getPoisson(kHat, random);
+            sumKi += ki[u];
+        }
+
+        long delta = sumKi - sumKo;
 
         // delta>0: ko を減らす必要がある / delta<0: ko を増やす必要がある
         while (delta != 0) {
             int u = random.nextInt(n);
             if (delta > 0) {
-                if (ko[u] > 0) {
-                    ko[u]--;
+                if (ki[u] > 0) {
+                    ki[u]--;
                     delta--;
                 }
             } else {
-                if (ko[u] < 2 * kHat) {
-                    ko[u]++;
-                    delta++;
-                }
+                ki[u]++;
+                delta++;
             }
         }
 
-        // kn = 2*kHat - ko（常に 0..2kHat）
+        // 無向次数 (Poisson) の生成
+        long sumKn = 0;
         for (int u = 0; u < n; u++) {
-            kn[u] = 2 * kHat - ko[u];
+            kn[u] = RandomUtils.getPoisson(kHat, random);
+            sumKn += kn[u];
+        }
+
+        // sumKn が偶数になるように調整（nondirected はペアリングするために偶数が必要）
+        if ((sumKn & 1L) != 0L) {
+            // 奇数なので1つ減らす（0より大きいノードを探す）
+            boolean adjusted = false;
+            for (int attempt = 0; attempt < n * 2 && !adjusted; attempt++) {
+                int u = random.nextInt(n);
+                if (kn[u] > 0) {
+                    kn[u]--;
+                    sumKn--;
+                    adjusted = true;
+                }
+            }
+            // すべてのノードが0の場合（理論上は起こりにくいが）
+            if (!adjusted) {
+                int u = random.nextInt(n);
+                kn[u]++;
+                sumKn++;
+            }
         }
 
         return generateFromDegreeSequence(name, ki, ko, kn, seed ^ 0x9E3779B97F4A7C15L);

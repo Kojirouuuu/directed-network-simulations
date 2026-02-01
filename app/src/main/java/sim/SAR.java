@@ -2,6 +2,8 @@ package sim;
 
 import sim.network.DirectedGraph;
 import sim.network.topology.DirectedCM;
+import sim.network.topology.DirectedCMInPow;
+import sim.network.topology.DirectedCMOutPow;
 import sim.simulation.SARSimulator;
 import sim.simulation.SARResult;
 import sim.utils.ArrayUtils;
@@ -43,7 +45,9 @@ public class SAR {
 
         final int rho0Count = config.rho0List.length;
         final int lambdaDirectedCount = config.lambdaDirectedList.length;
-        final long totalTasks = (long) config.batchSize * config.itrs * rho0Count * lambdaDirectedCount;
+        final int lambdaNondirectedCount = config.lambdaNondirectedList.length;
+        final long totalTasks = (long) config.batchSize * config.itrs * rho0Count * lambdaDirectedCount * lambdaNondirectedCount;
+
         System.out.println("Total tasks: " + totalTasks);
         System.out.println(config.networkType + ": N=" + config.N + ", itrs=" + config.itrs);
 
@@ -87,6 +91,10 @@ public class SAR {
         DirectedGraph g = switch (config.networkType) {
             case "DirectedCM" -> DirectedCM.generate("DirectedCM", config.N, config.kHat,
                     GRAPH_BASE_SEED + batchIndex);
+            case "DirectedCMInPow" -> DirectedCMInPow.generate("DirectedCMInPow", config.N, config.kHat, config.gamma,
+                    GRAPH_BASE_SEED + batchIndex);
+            case "DirectedCMOutPow" -> DirectedCMOutPow.generate("DirectedCMOutPow", config.N, config.kHat, config.gamma,
+                    GRAPH_BASE_SEED + batchIndex);
             default -> throw new IllegalArgumentException("Unknown network type: " + config.networkType);
         };
 
@@ -99,14 +107,17 @@ public class SAR {
                 double rho0 = config.rho0List[ri];
                 for (int li = 0; li < config.lambdaDirectedList.length; li++) {
                     double lambdaDirected = config.lambdaDirectedList[li];
+                    for (int lni = 0; lni < config.lambdaNondirectedList.length; lni++) {
+                        double lambdaNondirected = config.lambdaNondirectedList[lni];
 
-                    int[] thresholdList = new int[config.N];
-                    Arrays.fill(thresholdList, config.threshold);
+                        int[] thresholdList = new int[config.N];
+                        Arrays.fill(thresholdList, config.threshold);
 
-                    runSimulation(g, config, lambdaDirected, config.lambdaNondirected, config.mu, rho0,
-                            thresholdList, batchIndex, itr, resultsPath);
+                        runSimulation(g, config, lambdaDirected, lambdaNondirected, config.mu, rho0,
+                                thresholdList, batchIndex, itr, resultsPath);
 
-                    done.incrementAndGet();
+                        done.incrementAndGet();
+                    }
                 }
             }
         }
@@ -126,8 +137,8 @@ public class SAR {
         String idx = String.format("%02d", batchIndex);
         String networkPath = g.name;
 
-        Path basePath = Paths.get(String.format("out/fastsar/%s/threshold=%d/N=%d", networkPath, config.threshold,
-                config.N));
+        Path basePath = Paths.get(String.format("out/fastsar/%s/threshold=%d/N=%d/khat=%d", networkPath, config.threshold,
+                config.N, config.kHat));
         return PathsEx.resolveIndexed(
                 basePath.resolve(String.format("results_%s.csv", idx))
         );
@@ -165,23 +176,23 @@ public class SAR {
         int[] init = Arrays.copyOfRange(nodes, 0, initialInfectedNum);
 
         long simSeed = SIM_BASE_SEED + (long) batchIndex * config.itrs + itr;
-
+        
         SARResult res = SARSimulator.simulate(
-                g, lambdaDirected, config.lambdaNondirected, config.mu, config.tMax, thresholdList, init,
+                g, lambdaDirected, lambdaNondirected, config.mu, config.tMax, thresholdList, init,
                 simSeed
         );
 
         try {
             if (config.isFinal) {
-                res.writeFinalStateCsv(resultsPath, itr, lambdaDirected, config.lambdaNondirected, config.mu,
+                res.writeFinalStateCsv(resultsPath, itr, lambdaDirected, lambdaNondirected, config.mu,
                         true);
             } else {
-                res.writeTimeSeriesCsv(resultsPath, itr, lambdaDirected, config.lambdaNondirected, config.mu,
+                res.writeTimeSeriesCsv(resultsPath, itr, lambdaDirected, lambdaNondirected, config.mu,
                         true);
             }
         } catch (IOException e) {
             System.out.println("CSV output error (batch " + batchIndex + ", iteration " + itr + ", lambdaDirected "
-                    + lambdaDirected + ", lambdaNondirected " + config.lambdaNondirected + ", mu " + config.mu
+                    + lambdaDirected + ", lambdaNondirected " + lambdaNondirected + ", mu " + config.mu
                     + "): " + e.getMessage());
             throw new RuntimeException(e);
         }
@@ -250,20 +261,26 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "DirectedCM"; // ネットワークタイプ
-        final int N = 1_000_000; // 頂点数
-        final int kHat = 4; // 平均次数
+        final String networkType = "DirectedCMOutPow"; // ネットワークタイプ
+        final int N = 100_000; // 頂点数
+        final int kHat = 5; // 平均次数
+        final double gamma = 2.4;
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 16; // バッチサイズ
-        final int itrs = 1000; // イテレーション数
+        final int itrs = 40; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 0.2;
-        final double lambdaDirectedStep = 0.002;
+        final double lambdaDirectedMax = 20.0;
+        final double lambdaDirectedStep = 0.2;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        final double lambdaNondirected = 0.2; // 無向辺の感染率
-        final double[] rho0List = { (double) 1 / N }; // 初期感染率のリスト
-        final int threshold = 1; // 閾値
+        // final double[] lambdaDirectedList = { 0.001, 0.01, 0.1, 0.2 };
+        final double lambdaNonDirectedMin = 0.0;
+        final double lambdaNonDirectedMax = 0.35;
+        final double lambdaNonDirectedStep = 0.02;
+        // final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax, lambdaNonDirectedStep); // 無向辺の感染率
+        final double[] lambdaNondirectedList = { 0.0, 0.1, 0.2 }; // 無向辺の感染率
+        final double[] rho0List = { 0.12, 0.15 }; // 初期感染率のリスト
+        final int threshold = 3; // 閾値
     }
 }

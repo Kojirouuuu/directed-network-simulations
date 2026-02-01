@@ -1,5 +1,11 @@
 package sim.network;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
 
 /**
@@ -282,83 +288,155 @@ public final class DirectedGraph {
     }
 
     /**
-     * グラフが弱連結かどうかを判定する。
+     * グラフの最大連結成分のサイズを返す。
      *
-     * @return 弱連結の場合 true
+     * @param includeUndirectedEdges 無向辺を含むかどうか
+     * @return 最大連結成分のサイズ
      */
-    public boolean isWeaklyConnected() {
+    public int checkConnected(boolean includeUndirectedEdges) {
         if (n == 0) {
-            return true;
+            return 0;
         }
 
         boolean[] visited = new boolean[n];
         ArrayDeque<Integer> q = new ArrayDeque<>();
 
-        int start = 0;
-        visited[start] = true;
-        q.add(start);
-        int seen = 1;
+        int maxSize = 0;
+        for (int start = 0; start < n; start++) {
+            if (visited[start]) {
+                continue;
+            }
+            visited[start] = true;
+            boolean[] curVisited = new boolean[n];
+            curVisited[start] = true;
+            
+            q.add(start);
+            int seen = 1;
 
-        while (!q.isEmpty()) {
-            int u = q.poll();
+            while (!q.isEmpty()) {
+                int u = q.poll();
 
-            // out-neighbors を辿る
-            IntRange rOut = outNeighborRange(u);
-            for (int i = rOut.start; i < rOut.end; i++) {
-                int v = getOutNeighbor(i);
-                if (!visited[v]) {
-                    visited[v] = true;
-                    q.add(v);
-                    seen++;
+                // out-neighbors を辿る
+                IntRange rOut = outNeighborRange(u);
+                for (int i = rOut.start; i < rOut.end; i++) {
+                    if (!includeUndirectedEdges && isOutUndirected(i)) {
+                        continue;
+                    }
+                    int v = getOutNeighbor(i);
+                    if (!curVisited[v]) {
+                        visited[v] = true;
+                        curVisited[v] = true;
+                        q.add(v);
+                        seen++;
+                    }
+                }
+
+                // in-neighbors を辿る
+                IntRange rIn = inNeighborRange(u);
+                for (int i = rIn.start; i < rIn.end; i++) {
+                    if (!includeUndirectedEdges && isInUndirected(i)) {
+                        continue;
+                    }
+                    int v = getInNeighbor(i);
+                    if (!curVisited[v]) {
+                        visited[v] = true;
+                        curVisited[v] = true;
+                        q.add(v);
+                        seen++;
+                    }
                 }
             }
 
-            // in-neighbors を辿る
-            IntRange rIn = inNeighborRange(u);
-            for (int i = rIn.start; i < rIn.end; i++) {
-                int v = getInNeighbor(i);
-                if (!visited[v]) {
-                    visited[v] = true;
-                    q.add(v);
-                    seen++;
-                }
-            }
+            maxSize = Math.max(maxSize, seen);
         }
 
-        return seen == n;
+        return maxSize;
     }
 
     /**
      * グラフの情報を標準出力に表示する。
      */
     public void printInfo() {
-        System.out.println("Graph: " + name);
-        System.out.println("Number of vertices: " + n);
-        System.out.println("Number of directed edges: " + m);
+        System.out.println("=== Graph Info ===");
+        System.out.println("Name: " + name);
+        System.out.println("Vertices (n): " + n);
 
-        int numberOfUndirectedEdges = 0;
+        int numberOfDirectedArcs = 0;
+        int numberOfUndirectedArcs = 0;
         for (int i = 0; i < m; i++) {
             if (outIsUndirected[i]) {
-                numberOfUndirectedEdges++;
+                numberOfUndirectedArcs++;
+            } else {
+                numberOfDirectedArcs++;
             }
         }
-        System.out.println("Number of undirected edges: " + numberOfUndirectedEdges / 2);
+        System.out.println("Directed Arcs (m): " + numberOfDirectedArcs);
+        System.out.println("Undirected Arcs (m): " + numberOfUndirectedArcs);
         System.out.println(
                 "Note: Even if directed edges (u, v) and (v, u) both exist, this does not mean there exists an undirected edge (u, v).");
 
-        double inAverageDegree = 0;
+        double inAverageDegreeExcludingUndirected = 0;
+        double inAverageDegreeIncludingUndirected = 0;
+        double outAverageDegreeExcludingUndirected = 0;
+        double outAverageDegreeIncludingUndirected = 0;
+        
         for (int u = 0; u < n; u++) {
-            inAverageDegree += (inPtr[u + 1] - inPtr[u]);
-        }
-        inAverageDegree /= n;
-        System.out.println("Average in-degree: " + inAverageDegree + " (includes undirected edges)");
+            int inRange = inPtr[u + 1] - inPtr[u];
+            for (int i = 0; i < inRange; i++) {
+                if (!isInUndirected(inPtr[u] + i)) {
+                    inAverageDegreeExcludingUndirected++;
+                }
+                inAverageDegreeIncludingUndirected++;
+            }
 
-        double outAverageDegree = 0;
-        for (int u = 0; u < n; u++) {
-            outAverageDegree += (outPtr[u + 1] - outPtr[u]);
+            int outRange = outPtr[u + 1] - outPtr[u];
+            for (int i = 0; i < outRange; i++) {
+                if (!isOutUndirected(outPtr[u] + i)) {
+                    outAverageDegreeExcludingUndirected++;
+                }
+                outAverageDegreeIncludingUndirected++;
+            }
         }
-        outAverageDegree /= n;
-        System.out.println("Average out-degree: " + outAverageDegree + " (includes undirected edges)");
+        inAverageDegreeExcludingUndirected /= n;
+        inAverageDegreeIncludingUndirected /= n;
+        outAverageDegreeExcludingUndirected /= n;
+        outAverageDegreeIncludingUndirected /= n;
+
+        System.out.println("");
+        System.out.println("Average in-degree (excluding undirected edges): " + inAverageDegreeExcludingUndirected);
+        System.out.println("Average in-degree (including undirected edges): " + inAverageDegreeIncludingUndirected);
+        System.out.println("Average out-degree (excluding undirected edges): " + outAverageDegreeExcludingUndirected);
+        System.out.println("Average out-degree (including undirected edges): " + outAverageDegreeIncludingUndirected);
+
+        // 最大弱連結成分（WCC）
+        int maxWccDirectedOnly = checkConnected(false);
+        int maxWccIncludingUndirected = checkConnected(true);
+
+        System.out.println("");
+        System.out.println("Largest WCC size (directed-only edges): " + maxWccDirectedOnly);
+        System.out.println("Largest WCC size (including undirected edges): " + maxWccIncludingUndirected);
+    }
+
+    /**
+     * Pythonのnetworkxで読み込める形式で辺リストをファイルに書き出す。
+     * 出力形式は "u v"（スペース区切り）で、networkx.read_edgelist()で読み込める。
+     *
+     * @param path 出力先のファイルパス
+     * @throws IOException ファイル書き込みエラー
+     */
+    public void writeEdgeList(Path path) throws IOException {
+        Files.createDirectories(path.getParent());
+        try (BufferedWriter bw = Files.newBufferedWriter(path, StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING);
+                PrintWriter out = new PrintWriter(bw)) {
+            for (int u = 0; u < n; u++) {
+                IntRange rOut = outNeighborRange(u);
+                for (int i = rOut.start; i < rOut.end; i++) {
+                    int v = getOutNeighbor(i);
+                    out.println(u + " " + v);
+                }
+            }
+        }
     }
 
     /**

@@ -3,22 +3,83 @@
  */
 package sim;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import sim.network.topology.DirectedCM;
+import sim.network.topology.DirectedCMOutPow;
 import sim.network.DirectedGraph;
 
 public class App {
     public static void main(String[] args) {
-        for (int itr = 0; itr < 100; itr++) {
-            int n = 100000;
-            int kHat = 10;
-            long seed = 1234567890 + itr;
-            DirectedGraph g = DirectedCM.generate("DirectedCM", n, kHat, seed);
-            g.printInfo();
-            if (!g.isWeaklyConnected()) {
-                System.out.println("Not weakly connected");
-                System.exit(1);
+        int n = 100_000;
+        int itrs = 1000;
+        int[] kHatList = {4};
+        int[][] directedConnectedSizes = new int[itrs][kHatList.length];
+        int[][] undirectedConnectedSizes = new int[itrs][kHatList.length];
+
+        for (int itr = 0; itr < itrs; itr++) {
+            System.out.println("Iteration " + itr);
+            for (int kIdx = 0; kIdx < kHatList.length; kIdx++) {
+                System.out.println(" --> kHat = " + kHatList[kIdx] + "...");
+                int kHat = kHatList[kIdx];
+                long seed = 1234567890 + itr * 100 + kHat;
+                DirectedGraph g = DirectedCMOutPow.generate("DirectedCMOutPow", n, kHat, 2.4, seed);
+                g.printInfo();
+
+                directedConnectedSizes[itr][kIdx] = g.checkConnected(false);
+                undirectedConnectedSizes[itr][kIdx] = g.checkConnected(true);
             }
         }
-        System.out.println("All weakly connected");
+
+        String outputDir = String.format("out/connected_sizes/n=%d/", n);
+
+        // try {
+        //     writeConnectedSizesCsv(Path.of(outputDir + "directed_connected_sizes.csv"), directedConnectedSizes, kHatList);
+        //     writeConnectedSizesCsv(Path.of(outputDir + "undirected_connected_sizes.csv"), undirectedConnectedSizes, kHatList);
+        // } catch (IOException e) {
+        //     System.err.println("CSV出力エラー: " + e.getMessage());
+        //     e.printStackTrace();
+        // }
+
+        System.out.println("All connected");
+    }
+
+    /**
+     * 連結成分サイズの2次元配列をCSVファイルに書き出す。
+     * 形式: 行がitr、列がkHatの値。ヘッダー行にkHatの値を含む。
+     *
+     * @param path 出力先のファイルパス
+     * @param connectedSizes 連結成分サイズの2次元配列 [itr][kHatIndex]
+     * @param kHatList kHatの値の配列
+     * @throws IOException ファイル書き込みエラー
+     */
+    private static void writeConnectedSizesCsv(Path path, int[][] connectedSizes, int[] kHatList) throws IOException {
+        Path parent = path.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        try (BufferedWriter bw = Files.newBufferedWriter(path, StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING);
+                PrintWriter out = new PrintWriter(bw)) {
+            // ヘッダー行: itr, kHat1, kHat2, ...
+            out.print("itr");
+            for (int kHat : kHatList) {
+                out.print("," + kHat);
+            }
+            out.println();
+
+            // データ行
+            for (int itr = 0; itr < connectedSizes.length; itr++) {
+                out.print(itr);
+                for (int kIdx = 0; kIdx < kHatList.length; kIdx++) {
+                    out.print("," + connectedSizes[itr][kIdx]);
+                }
+                out.println();
+            }
+        }
     }
 }
