@@ -1,0 +1,117 @@
+---
+alwaysApply: true
+---
+
+---
+alwaysApply: true
+---
+
+## Branch Strategy
+
+### Main Branches
+
+- **main**: Stable branch for production
+- **develop**: Primary development branch (default)
+
+### Development Workflow
+
+1. Always open pull requests targeting the `develop` branch.
+2. Perform feature testing and integration on `develop`.
+3. Merge `develop` into `main` periodically during releases.
+
+### Branch Naming Convention
+
+Use lowercase and kebab-case.
+
+- New features:  
+  `feature/<feature-name>`
+
+- Bug fixes:  
+  `fix/<issue-name>`
+
+- Refactoring:  
+  `refactor/<target>`
+
+- Documentation:  
+  `docs/<topic>`
+
+**Examples:**
+
+feature/user-authentication
+fix/login-validation-error
+refactor/api-response-handling
+docs/setup-guide
+
+
+---
+
+## Commit Message Rules
+
+✅ **Write all commit messages in English.**
+
+### Format
+
+<type>: <short summary>
+
+
+Keep the summary:
+
+- imperative ("add", not "added")
+- under **72 characters**
+- concise and descriptive
+- no period at the end
+
+---
+
+### Allowed Types
+
+- `feat:` → New feature  
+- `fix:` → Bug fix  
+- `refactor:` → Code restructuring without behavior change  
+- `docs:` → Documentation only  
+- `chore:` → Config, build, dependency updates  
+- `test:` → Tests added or modified  
+- `perf:` → Performance improvements  
+
+---
+
+### Good Examples
+
+feat: add semi-directed EBCM simulation
+fix: resolve race condition in parallel execution
+refactor: simplify parameter initialization
+docs: update installation instructions
+chore: upgrade numpy to 2.x
+
+
+---
+
+### Avoid
+
+❌ Vague commits:
+
+fix: bug
+update
+changes
+
+
+❌ Mixed concerns:
+
+feat: add model and fix logging bug
+
+
+→ Split into multiple commits.
+
+---
+
+### Recommended (Optional but Strongly Encouraged)
+
+For non-trivial commits, include a body:
+
+feat: add adaptive timestep solver
+
+Improve stability when lambda is large by dynamically
+adjusting dt during simulation.
+
+
+Wrap body lines at **72 characters**.

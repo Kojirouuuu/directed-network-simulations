@@ -1,3 +1,6 @@
+# macOS
+.DS_Store
+
 # Ignore Gradle project-specific cache directory
 .gradle
 
@@ -18,7 +21,5 @@ notebooks/test.ipynb
 out/
 
 app/src/main/java/sirsim/network/files/*
-
-app/src/main/java/sim/.DS_Store
 
 .vscode/
