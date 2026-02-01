@@ -23,3 +23,5 @@ out/
 app/src/main/java/sirsim/network/files/*
 
 .vscode/
+
+.env
