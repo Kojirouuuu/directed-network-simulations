@@ -1,11 +1,23 @@
-# macOS
+# ============================================================================
+# Operating System Files
+# ============================================================================
+
+# macOS system files
 .DS_Store
 
-# Ignore Gradle project-specific cache directory
+# ============================================================================
+# Gradle Build System
+# ============================================================================
+
+# Gradle project-specific cache directory
 .gradle
 
-# Ignore Gradle build output directory
-build
+# Gradle build output directory
+build/
+
+# ============================================================================
+# Python
+# ============================================================================
 
 # Python cache files
 __pycache__/
@@ -14,14 +26,29 @@ __pycache__/
 *.so
 .Python
 
-# test notebook
+# Python virtual environment
+venv/
+
+# ============================================================================
+# Project-Specific
+# ============================================================================
+
+# Test notebook (excluded from version control)
 notebooks/test.ipynb
 
-# simulation results
+# Simulation results output directory
 out/
 
-app/src/main/java/sirsim/network/files/*
+# ============================================================================
+# IDE and Editor
+# ============================================================================
 
+# Visual Studio Code settings
 .vscode/
 
+# ============================================================================
+# Environment Variables
+# ============================================================================
+
+# Environment variable files (may contain sensitive information)
 .env

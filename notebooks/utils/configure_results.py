@@ -127,7 +127,7 @@ def _compute_result_final_state(
         高次元配列とパラメータ値の辞書
     """
     # パラメータ列を自動検出
-    param_columns = ['itr', 'lambdaDirected', 'lambdaNondirected', 'mu']
+    param_columns = ['itr', 'rho0', 'lambdaDirected', 'lambdaNondirected', 'mu']
     value_columns = ['A', 'R', 'initialAdoptedTime', 'finalAdoptedTime']
     
     # 存在するパラメータ列のみを使用
@@ -144,7 +144,7 @@ def _compute_result_final_state(
         param_values[col] = np.array(unique_vals)
         param_to_idx[col] = {val: idx for idx, val in enumerate(unique_vals)}
     
-    # 配列の次元を決定: (itr, lambdaDirected, lambdaNondirected, mu, ...)
+    # 配列の次元を決定: (itr, rho0, lambdaDirected, lambdaNondirected, mu, ...)
     dims = [len(dfs_by_itr)]
     for col in available_param_columns:
         if col != 'itr':
@@ -196,7 +196,7 @@ def _compute_result_time_series(
         高次元配列とパラメータ値の辞書
     """
     # パラメータ列を自動検出
-    param_columns = ['itr', 'lambdaDirected', 'lambdaNondirected', 'mu', 'time']
+    param_columns = ['itr', 'rho0', 'lambdaDirected', 'lambdaNondirected', 'mu', 'time']
     value_columns = ['A', 'R', 'S']
     
     # 存在するパラメータ列のみを使用
@@ -223,7 +223,7 @@ def _compute_result_time_series(
             time_to_idx[t] = idx
         param_to_idx['time'] = time_to_idx
     
-    # 配列の次元を決定: (itr, lambdaDirected, lambdaNondirected, mu, time, ...)
+    # 配列の次元を決定: (itr, rho0, lambdaDirected, lambdaNondirected, mu, time, ...)
     dims = [len(dfs_by_itr)]
     for col in available_param_columns:
         if col != 'itr':

@@ -54,7 +54,7 @@ public final class SARResult {
      * @param append 追記モードの場合 true
      * @throws IOException ファイル書き込みエラー
      */
-    public void writeTimeSeriesCsv(Path path, int itr, double lambdaDirected, double lambdaNondirected, double mu,
+    public void writeTimeSeriesCsv(Path path, int itr, double rho0, double lambdaDirected, double lambdaNondirected, double mu,
             boolean append) throws IOException {
         if (!append) {
             path = PathsEx.resolveIndexed(path);
@@ -73,11 +73,11 @@ public final class SARResult {
                 append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING);
                 PrintWriter out = new PrintWriter(bw)) {
             if (writeHeader) {
-                out.println("itr,lambdaDirected,lambdaNondirected,mu,time,A,R");
+                out.println("itr,rho0,lambdaDirected,lambdaNondirected,mu,time,A,R");
             }
             for (int i = 0; i < times.size(); i++) {
-                out.printf(Locale.ROOT, "%d,%.9f,%.9f,%.9f,%.9f,%d,%d%n",
-                        itr, lambdaDirected, lambdaNondirected, mu, times.get(i), A.get(i), R.get(i));
+                out.printf(Locale.ROOT, "%d,%.9f,%.9f,%.9f,%.9f,%.9f,%d,%d%n",
+                        itr, rho0, lambdaDirected, lambdaNondirected, mu, times.get(i), A.get(i), R.get(i));
             }
         }
     }
@@ -94,7 +94,7 @@ public final class SARResult {
      * @param append 追記モードの場合 true
      * @throws IOException ファイル書き込みエラー
      */
-    public void writeFinalStateCsv(Path path, int itr, double lambdaDirected, double lambdaNondirected, double mu,
+    public void writeFinalStateCsv(Path path, int itr, double rho0, double lambdaDirected, double lambdaNondirected, double mu,
             boolean append) throws IOException {
         if (!append) {
             path = PathsEx.resolveIndexed(path);
@@ -113,10 +113,10 @@ public final class SARResult {
                 append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING);
                 PrintWriter out = new PrintWriter(bw)) {
             if (writeHeader) {
-                out.println("itr,lambdaDirected,lambdaNondirected,mu,time,initialAdoptedTime,finalAdoptedTime,A,R");
+                out.println("itr,rho0,lambdaDirected,lambdaNondirected,mu,time,initialAdoptedTime,finalAdoptedTime,A,R");
             }
-            out.printf(Locale.ROOT, "%d,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%d,%d%n",
-                    itr, lambdaDirected, lambdaNondirected, mu, times.get(times.size() - 1), initialAdoptedTime,
+            out.printf(Locale.ROOT, "%d,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%d,%d%n",
+                    itr, rho0, lambdaDirected, lambdaNondirected, mu, times.get(times.size() - 1), initialAdoptedTime,
                     finalAdoptedTime, A.get(A.size() - 1), R.get(R.size() - 1));
         }
     }

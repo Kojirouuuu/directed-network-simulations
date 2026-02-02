@@ -184,15 +184,15 @@ public class SAR {
 
         try {
             if (config.isFinal) {
-                res.writeFinalStateCsv(resultsPath, itr, lambdaDirected, lambdaNondirected, config.mu,
+                res.writeFinalStateCsv(resultsPath, itr, rho0, lambdaDirected, lambdaNondirected, config.mu,
                         true);
             } else {
-                res.writeTimeSeriesCsv(resultsPath, itr, lambdaDirected, lambdaNondirected, config.mu,
+                res.writeTimeSeriesCsv(resultsPath, itr, rho0, lambdaDirected, lambdaNondirected, config.mu,
                         true);
             }
         } catch (IOException e) {
             System.out.println("CSV output error (batch " + batchIndex + ", iteration " + itr + ", lambdaDirected "
-                    + lambdaDirected + ", lambdaNondirected " + lambdaNondirected + ", mu " + config.mu
+                    + rho0 + ", lambdaDirected " + lambdaDirected + ", lambdaNondirected " + lambdaNondirected + ", mu " + config.mu
                     + "): " + e.getMessage());
             throw new RuntimeException(e);
         }
@@ -267,7 +267,7 @@ public class SAR {
         final double gamma = 2.7;
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 20; // バッチサイズ
-        final int itrs = 50; // イテレーション数
+        final int itrs = 20; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
