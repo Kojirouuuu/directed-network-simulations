@@ -52,3 +52,6 @@ out/
 
 # Environment variable files (may contain sensitive information)
 .env
+
+# NumPy compressed output
+*.npz

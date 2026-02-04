@@ -16,30 +16,29 @@ import sim.network.DirectedGraph;
 public class App {
     public static void main(String[] args) {
         int n = 100_000;
+        int kOutMin = 3;
+        int kOutMax = n - 1;
+        int kuAve = 4;
+        double gamma = 2.4;
         int itrs = 1000;
-        int[] kHatList = {4};
-        int[][] directedConnectedSizes = new int[itrs][kHatList.length];
-        int[][] undirectedConnectedSizes = new int[itrs][kHatList.length];
+        int[] directedConnectedSizes = new int[itrs];
+        int[] undirectedConnectedSizes = new int[itrs];
 
         for (int itr = 0; itr < itrs; itr++) {
             System.out.println("Iteration " + itr);
-            for (int kIdx = 0; kIdx < kHatList.length; kIdx++) {
-                System.out.println(" --> kHat = " + kHatList[kIdx] + "...");
-                int kHat = kHatList[kIdx];
-                long seed = 1234567890 + itr * 100 + kHat;
-                DirectedGraph g = DirectedCMOutPow.generate("DirectedCMOutPow", n, kHat, 2.4, seed);
-                g.printInfo();
+            long seed = 1234567890 + itr * 100;
+            DirectedGraph g = DirectedCMOutPow.generate("DirectedCMOutPow", n, kOutMin, kOutMax, kuAve, gamma, seed);
+            g.printInfo();
 
-                directedConnectedSizes[itr][kIdx] = g.checkConnected(false);
-                undirectedConnectedSizes[itr][kIdx] = g.checkConnected(true);
-            }
+            directedConnectedSizes[itr] = g.checkConnected(false);
+            undirectedConnectedSizes[itr] = g.checkConnected(true);
         }
 
         String outputDir = String.format("out/connected_sizes/n=%d/", n);
 
         // try {
-        //     writeConnectedSizesCsv(Path.of(outputDir + "directed_connected_sizes.csv"), directedConnectedSizes, kHatList);
-        //     writeConnectedSizesCsv(Path.of(outputDir + "undirected_connected_sizes.csv"), undirectedConnectedSizes, kHatList);
+        //     writeConnectedSizesCsv(Path.of(outputDir + "directed_connected_sizes.csv"), directedConnectedSizes);
+        //     writeConnectedSizesCsv(Path.of(outputDir + "undirected_connected_sizes.csv"), undirectedConnectedSizes);
         // } catch (IOException e) {
         //     System.err.println("CSV出力エラー: " + e.getMessage());
         //     e.printStackTrace();
@@ -50,14 +49,13 @@ public class App {
 
     /**
      * 連結成分サイズの2次元配列をCSVファイルに書き出す。
-     * 形式: 行がitr、列がkHatの値。ヘッダー行にkHatの値を含む。
+     * 形式: 行がitr。ヘッダー行にitrを含む。
      *
      * @param path 出力先のファイルパス
      * @param connectedSizes 連結成分サイズの2次元配列 [itr][kHatIndex]
-     * @param kHatList kHatの値の配列
      * @throws IOException ファイル書き込みエラー
      */
-    private static void writeConnectedSizesCsv(Path path, int[][] connectedSizes, int[] kHatList) throws IOException {
+    private static void writeConnectedSizesCsv(Path path, int[] connectedSizes) throws IOException {
         Path parent = path.getParent();
         if (parent != null) {
             Files.createDirectories(parent);
@@ -65,19 +63,15 @@ public class App {
         try (BufferedWriter bw = Files.newBufferedWriter(path, StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING);
                 PrintWriter out = new PrintWriter(bw)) {
-            // ヘッダー行: itr, kHat1, kHat2, ...
+            // ヘッダー行: itr
             out.print("itr");
-            for (int kHat : kHatList) {
-                out.print("," + kHat);
-            }
             out.println();
 
             // データ行
             for (int itr = 0; itr < connectedSizes.length; itr++) {
                 out.print(itr);
-                for (int kIdx = 0; kIdx < kHatList.length; kIdx++) {
-                    out.print("," + connectedSizes[itr][kIdx]);
-                }
+                out.print(",");
+                out.print(connectedSizes[itr]);
                 out.println();
             }
         }

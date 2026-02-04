@@ -11,9 +11,9 @@ def has_any_file_recursive(dir_path: str) -> bool:
 
 def configure_output_path(
     N: int,
-    k_hat: int,
     threshold: int,
     network_type: str,
+    k: int,
 ) -> str:
     """出力パスを構築する。
     
@@ -25,11 +25,16 @@ def configure_output_path(
     Returns:
         出力ディレクトリの絶対パス
     """
+
+    if network_type == "DirectedCMOutPow":
+        k_path = f"kOutMin={k}"
+    else:
+        raise ValueError(f"Unknown network type: {network_type}")
     
     output_path = os.path.abspath(
         os.path.join(
             '..',
-            f'app/out/fastsar/{network_type}/threshold={threshold}/N={N}/khat={k_hat}'
+            f'app/out/fastsar/{network_type}/threshold={threshold}/N={N}/{k_path}'
         )
     )
     if not has_any_file_recursive(output_path):

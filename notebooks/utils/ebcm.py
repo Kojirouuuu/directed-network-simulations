@@ -428,6 +428,39 @@ class SemiDirectedSAREBCM:
 
         return np.array([dtheta_d, dtheta_u, dR], dtype=float)
 
+    def F_map(self, theta_d: float, theta_u: float) -> tuple[float, float]:
+        """
+        定常自己整合写像 F = (Fd, Fu) を返す。
+          Fd = (λd ξ_S^(d) + μ) / (λd + μ)
+          Fu = (λu ξ_S^(u) + μ) / (λu + μ)
+        """
+        _, xi_d, xi_u = self.S_xi(theta_d, theta_u)
+
+        denom_d = self.config.lambda_d + self.config.mu
+        denom_u = self.config.lambda_u + self.config.mu
+
+        # λ+μ=0 の退化ケースは「方程式が拘束しない」ので NaN を返して明示
+        Fd = ((self.config.lambda_d * xi_d + self.config.mu) / denom_d) if denom_d > 0 else np.nan
+        Fu = ((self.config.lambda_u * xi_u + self.config.mu) / denom_u) if denom_u > 0 else np.nan
+
+        return float(Fd), float(Fu)
+
+    def fixed_point_residual(self, theta_d: float, theta_u: float) -> tuple[float, float]:
+        """
+        残差 g = (Fd-θd, Fu-θu) を返す。
+        """
+        Fd, Fu = self.F_map(theta_d, theta_u)
+        return float(Fd - theta_d), float(Fu - theta_u)
+
+    def fixed_point_residual_vec(self, x: np.ndarray) -> np.ndarray:
+        """
+        root/solve 用: x=[θd,θu] -> [Fd-θd, Fu-θu]
+        """
+        td, tu = float(x[0]), float(x[1])
+        gd, gu = self.fixed_point_residual(td, tu)
+        return np.array([gd, gu], dtype=float)
+
+
 
 # -----------------------------
 # 簡易積分器（RK4）
@@ -491,4 +524,112 @@ def simulate_ebcm(
         "S": S_series,
         "A": A_series,
         "R": R_series,
+    }
+
+def newton_solve_theta(
+    model,
+    x0,
+    tol=1e-10,
+    max_iter=50,
+    eps=1e-6,
+    damping=True,
+    clamp01=True,
+    verbose=True,
+):
+    """
+    Newton 法で g(θ_d, θ_u)=0 を解く。
+    g は model.fixed_point_residual_vec(x)、x=[θ_d, θ_u]。
+
+    初期値 x0、終了条件 tol（||g||_2）、最大反復 max_iter。
+    ヤコビアンは中心差分（eps）。damping=True でバックトラック直線探索、
+    clamp01=True で θ_d, θ_u を [0,1] にクランプ。verbose で反復ログ出力。
+
+    戻り値: 解 x (shape (2,)) と info 辞書（converged, iter, residual_norm 等）。
+    """
+    x = np.array(x0, dtype=float).reshape(2,)
+    if clamp01:
+        x = np.clip(x, 0.0, 1.0)
+
+    def g(x):
+        return model.fixed_point_residual_vec(x)
+
+    def jacobian_central(x, eps):
+        # J[:,j] = (g(x+eps e_j) - g(x-eps e_j)) / (2 eps)
+        J = np.zeros((2, 2), dtype=float)
+        for j in range(2):
+            dx = np.zeros(2, dtype=float)
+            dx[j] = eps
+            xp = x + dx
+            xm = x - dx
+            if clamp01:
+                xp = np.clip(xp, 0.0, 1.0)
+                xm = np.clip(xm, 0.0, 1.0)
+            gp = g(xp)
+            gm = g(xm)
+            J[:, j] = (gp - gm) / (2.0 * eps)
+        return J
+
+    gval = g(x)
+    ng = float(np.linalg.norm(gval, ord=2))
+
+    # if verbose:
+    #     print(f"[Newton] iter=0 x={x} ||g||={ng:.3e} g={gval}")
+
+    for it in range(1, max_iter + 1):
+        if ng < tol:
+            return x, {
+                "converged": True,
+                "iter": it - 1,
+                "residual_norm": ng,
+                "residual": gval,
+            }
+
+        J = jacobian_central(x, eps)
+
+        # Solve J * step = -g
+        try:
+            step = np.linalg.solve(J, -gval)
+        except np.linalg.LinAlgError:
+            # fallback: least squares if singular/ill-conditioned
+            step, *_ = np.linalg.lstsq(J, -gval, rcond=None)
+
+        # Optional damping (backtracking line search)
+        alpha = 1.0
+        x_new = x + alpha * step
+        if clamp01:
+            x_new = np.clip(x_new, 0.0, 1.0)
+
+        if damping:
+            # accept if reduces ||g||; else shrink alpha
+            for _ in range(20):
+                g_new = g(x_new)
+                ng_new = float(np.linalg.norm(g_new, ord=2))
+                if np.isfinite(ng_new) and ng_new < ng:
+                    break
+                alpha *= 0.5
+                x_new = x + alpha * step
+                if clamp01:
+                    x_new = np.clip(x_new, 0.0, 1.0)
+            else:
+                # damping failed to improve
+                g_new = g(x_new)
+                ng_new = float(np.linalg.norm(g_new, ord=2))
+        else:
+            g_new = g(x_new)
+            ng_new = float(np.linalg.norm(g_new, ord=2))
+
+        x, gval, ng = x_new, g_new, ng_new
+
+        if verbose:
+            condJ = np.linalg.cond(J) if np.all(np.isfinite(J)) else np.inf
+            # print(
+            #     f"[Newton] iter={it} alpha={alpha:.3e} x={x} "
+            #     f"||g||={ng:.3e} cond(J)={condJ:.3e} g={gval}"
+            # )
+
+    return x, {
+        "converged": False,
+        "iter": max_iter,
+        "residual_norm": ng,
+        "residual": gval,
     }

@@ -379,12 +379,19 @@ public final class DirectedGraph {
         double inAverageDegreeIncludingUndirected = 0;
         double outAverageDegreeExcludingUndirected = 0;
         double outAverageDegreeIncludingUndirected = 0;
+
+        int maxInDegree = 0;
+        int maxOutDegree = 0;
+        int minInDegree = Integer.MAX_VALUE;
+        int minOutDegree = Integer.MAX_VALUE;
         
         for (int u = 0; u < n; u++) {
             int inRange = inPtr[u + 1] - inPtr[u];
             for (int i = 0; i < inRange; i++) {
                 if (!isInUndirected(inPtr[u] + i)) {
                     inAverageDegreeExcludingUndirected++;
+                    maxInDegree = Math.max(maxInDegree, inRange);
+                    minInDegree = Math.min(minInDegree, inRange);
                 }
                 inAverageDegreeIncludingUndirected++;
             }
@@ -393,6 +400,8 @@ public final class DirectedGraph {
             for (int i = 0; i < outRange; i++) {
                 if (!isOutUndirected(outPtr[u] + i)) {
                     outAverageDegreeExcludingUndirected++;
+                    maxOutDegree = Math.max(maxOutDegree, outRange);
+                    minOutDegree = Math.min(minOutDegree, outRange);
                 }
                 outAverageDegreeIncludingUndirected++;
             }
@@ -407,6 +416,12 @@ public final class DirectedGraph {
         System.out.println("Average in-degree (including undirected edges): " + inAverageDegreeIncludingUndirected);
         System.out.println("Average out-degree (excluding undirected edges): " + outAverageDegreeExcludingUndirected);
         System.out.println("Average out-degree (including undirected edges): " + outAverageDegreeIncludingUndirected);
+
+        System.out.println("");
+        System.out.println("Max in-degree: " + maxInDegree);
+        System.out.println("Min in-degree: " + minInDegree);
+        System.out.println("Max out-degree: " + maxOutDegree);
+        System.out.println("Min out-degree: " + minOutDegree);
 
         // 最大弱連結成分（WCC）
         int maxWccDirectedOnly = checkConnected(false);
