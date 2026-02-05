@@ -268,34 +268,34 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "DirectedCMInPow"; // ネットワークタイプ
-        final int N = 100_000; // 頂点数
+        final String networkType = "DirectedCMOutPow"; // ネットワークタイプ
+        final int N = 10_000; // 頂点数
         final int kInMin = 3; // 最小入次数
         final int kInMax = N - 1; // 最大入次数
         final int kOutMin = 3; // 最小出次数
         final int kOutMax = N - 1; // 最大出次数
-        final int kuAve = 6; // 平均次数
+        final double kuAve = 6.2; // 平均次数
         final double gamma = 2.7;
         final boolean isFinal = true; // 最終状態のみ出力するか
-        final int batchSize = 16; // バッチサイズ
+        final int batchSize = 20; // バッチサイズ
         final int itrs = 20; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 2.0;
-        final double lambdaDirectedStep = 0.02;
+        final double lambdaDirectedMax = 10.0;
+        final double lambdaDirectedStep = 0.1;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
         // final double[] lambdaDirectedList = { 0.001, 0.01, 0.1, 0.2 };
         final double lambdaNonDirectedMin = 0.0;
-        final double lambdaNonDirectedMax = 0.35;
-        final double lambdaNonDirectedStep = 0.02;
-        // final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax, lambdaNonDirectedStep); // 無向辺の感染率
-        final double[] lambdaNondirectedList = { 0.0, 1.0 }; // 無向辺の感染率
+        final double lambdaNonDirectedMax = 10.0;
+        final double lambdaNonDirectedStep = 0.1;
+        final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax, lambdaNonDirectedStep); // 無向辺の感染率
+        // final double[] lambdaNondirectedList = { 0.0, 1.0 }; // 無向辺の感染率
         final double rho0Min = 0.0;
         final double rho0Max = 0.2;
         final double rho0Step = 0.002;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); // 初期感染率のリスト
-        final double[] rho0List = { 0.03, 0.05, 0.1 }; // 初期感染率のリスト
+        final double[] rho0List = { 0.05, 0.15 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
     }
 }
