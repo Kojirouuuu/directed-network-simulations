@@ -14,7 +14,7 @@ public class GraphGen {
         int n = 1_000_0000;
         int kOutMin = 3;
         int kOutMax = n - 1;
-        int kuAve = 10;
+        double kuAve = 6.2;
         double[] gammaList = {2.7};
         int itrs = 10;
 

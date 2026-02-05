@@ -72,7 +72,7 @@ public final class DirectedCMOutPow {
      * @param seed    乱数シード
      * @return 生成された DirectedGraph
      */
-    public static DirectedGraph generate(String name, int n, int kOutMin, int kOutMax, int kuAve, double gamma, long seed) {
+    public static DirectedGraph generate(String name, int n, int kOutMin, int kOutMax, double kuAve, double gamma, long seed) {
         validateGenerateParams(name, n, kOutMin, kuAve, gamma);
 
         Random random = new Random(seed);
@@ -118,7 +118,7 @@ public final class DirectedCMOutPow {
         }
     }
 
-    private static void validateGenerateParams(String name, int n, int kOutMin, int kuAve, double gamma) {
+    private static void validateGenerateParams(String name, int n, int kOutMin, double kuAve, double gamma) {
         if (name == null) throw new IllegalArgumentException("name must be non-null");
         if (n < 0) throw new IllegalArgumentException("n must be non-negative");
         if (kOutMin < 0) throw new IllegalArgumentException("kOutMin must be non-negative");
@@ -179,7 +179,7 @@ public final class DirectedCMOutPow {
     /**
      * 平均 kuAve のポアソン分布で無向次数列をサンプルする。
      */
-    private static int[] sampleNondirectedDegrees(int n, int kuAve, Random random) {
+    private static int[] sampleNondirectedDegrees(int n, double kuAve, Random random) {
         int[] kn = new int[n];
         for (int u = 0; u < n; u++) {
             kn[u] = RandomUtils.getPoisson(kuAve, random);
