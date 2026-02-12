@@ -28,6 +28,8 @@ def configure_output_path(
 
     if network_type == "DirectedCMOutPow":
         k_path = f"kOutMin={k}"
+    elif network_type == "DirectedCMInPow":
+        k_path = f"kInMin={k}"
     else:
         raise ValueError(f"Unknown network type: {network_type}")
     

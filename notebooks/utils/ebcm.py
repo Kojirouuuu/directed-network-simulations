@@ -115,6 +115,8 @@ def degree_distribution(
     nonzero = np.where(pk > 0)[0]
     k_min_eff = int(nonzero.min()) if nonzero.size else 0
     k_max_eff = int(nonzero.max()) if nonzero.size else 0
+    if distribution_type == DistributionType.power_law:
+        k_max_eff = int(N**(1/2))
 
     return DegreeDistribution(
         distribution_type=distribution_type,
@@ -633,3 +635,40 @@ def newton_solve_theta(
         "residual_norm": ng,
         "residual": gval,
     }
+
+def compartments_from_theta_infty(
+    model: SemiDirectedSAREBCM,
+    theta_d_infty: float,
+    theta_u_infty: float,
+    clamp01: bool = True,
+) -> Tuple[float, float, float]:
+    """
+    与えられた (theta_d_infty, theta_u_infty) から (S_infty, A_infty, R_infty) を返す。
+
+    - S_infty は EBCM の式（あなたの S_xi）から直接計算。
+    - 無限時間極限では
+        * mu > 0:  A_infty = 0,   R_infty = 1 - S_infty
+        * mu = 0:  R_infty = 0,   A_infty = 1 - S_infty
+      （SAR/SIR 型で再活性化がない限り、mu>0 なら最終的に活動者は残りません）
+    """
+    td = float(theta_d_infty)
+    tu = float(theta_u_infty)
+    if clamp01:
+        td = float(np.clip(td, 0.0, 1.0))
+        tu = float(np.clip(tu, 0.0, 1.0))
+
+    S_infty, _, _ = model.S_xi(td, tu)
+
+    if model.config.mu > 0.0:
+        A_infty = 0.0
+        R_infty = 1.0 - S_infty
+    else:
+        R_infty = 0.0
+        A_infty = 1.0 - S_infty
+
+    # 数値誤差のクランプ（任意）
+    S_infty = float(np.clip(S_infty, 0.0, 1.0))
+    A_infty = float(np.clip(A_infty, 0.0, 1.0))
+    R_infty = float(np.clip(R_infty, 0.0, 1.0))
+
+    return S_infty, A_infty, R_infty
