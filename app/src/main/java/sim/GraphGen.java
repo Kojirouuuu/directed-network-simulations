@@ -23,7 +23,7 @@ public class GraphGen {
 
             long seed = 1234567890 + itr * 100;
             for (double gamma : gammaList) {
-                DirectedGraph g = DirectedCMOutPow.generate("DirectedCMOutPow", n, kOutMin, kOutMax, kuAve, gamma, seed);
+                DirectedGraph g = DirectedCMInPow.generate("DirectedCMInPow", n, kOutMin, kOutMax, kuAve, gamma, seed);
                 System.out.println("");
                 System.out.println("--------------------------------");
                 g.printInfo();

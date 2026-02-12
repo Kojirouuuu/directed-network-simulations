@@ -22,6 +22,7 @@ public final class SARResult {
     public final List<Integer> S; // 各時刻の Susceptible 数
     public final List<Integer> A; // 各時刻の Adopted 数
     public final List<Integer> R; // 各時刻の Recovered 数
+    public final List<Integer> Phi; // あと一回の伝播で採用されるノード数
 
     public final double initialAdoptedTime; // 初期採用時刻
     public final double finalAdoptedTime; // 最終採用時刻
@@ -30,12 +31,13 @@ public final class SARResult {
     public final double[] tRecover; // 各ノードの回復成立時刻（未回復は NaN）
 
     SARResult(int n, List<Double> times, List<Integer> S, List<Integer> A, List<Integer> R,
-            double initialAdoptedTime, double finalAdoptedTime, double[] tInfect, double[] tRecover) {
+            List<Integer> Phi, double initialAdoptedTime, double finalAdoptedTime, double[] tInfect, double[] tRecover) {
         this.n = n;
         this.times = times;
         this.S = S;
         this.A = A;
         this.R = R;
+        this.Phi = Phi;
         this.initialAdoptedTime = initialAdoptedTime;
         this.finalAdoptedTime = finalAdoptedTime;
         this.tInfect = tInfect;
@@ -73,11 +75,11 @@ public final class SARResult {
                 append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING);
                 PrintWriter out = new PrintWriter(bw)) {
             if (writeHeader) {
-                out.println("itr,rho0,lambdaDirected,lambdaNondirected,mu,time,A,R");
+                out.println("itr,rho_0,lambda_d,lambda_u,mu,time,A,R,Phi");
             }
             for (int i = 0; i < times.size(); i++) {
-                out.printf(Locale.ROOT, "%d,%.9f,%.9f,%.9f,%.9f,%.9f,%d,%d%n",
-                        itr, rho0, lambdaDirected, lambdaNondirected, mu, times.get(i), A.get(i), R.get(i));
+                out.printf(Locale.ROOT, "%d,%.9f,%.9f,%.9f,%.9f,%.9f,%d,%d,%d%n",
+                        itr, rho0, lambdaDirected, lambdaNondirected, mu, times.get(i), A.get(i), R.get(i), Phi.get(i));
             }
         }
     }
@@ -113,11 +115,11 @@ public final class SARResult {
                 append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING);
                 PrintWriter out = new PrintWriter(bw)) {
             if (writeHeader) {
-                out.println("itr,rho0,lambdaDirected,lambdaNondirected,mu,time,initialAdoptedTime,finalAdoptedTime,A,R");
+                out.println("itr,rho_0,lambda_d,lambda_u,mu,time,initial_adopted_time,final_adopted_time,A,R,Phi");
             }
-            out.printf(Locale.ROOT, "%d,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%d,%d%n",
+            out.printf(Locale.ROOT, "%d,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%d,%d,%d%n",
                     itr, rho0, lambdaDirected, lambdaNondirected, mu, times.get(times.size() - 1), initialAdoptedTime,
-                    finalAdoptedTime, A.get(A.size() - 1), R.get(R.size() - 1));
+                    finalAdoptedTime, A.get(A.size() - 1), R.get(R.size() - 1), Phi.get(Phi.size() - 1));
         }
     }
 }

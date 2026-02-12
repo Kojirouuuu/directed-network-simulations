@@ -35,6 +35,7 @@ venv/
 
 # Test notebook (excluded from version control)
 notebooks/test.ipynb
+notebooks/test2.ipynb
 
 # Simulation results output directory
 out/
@@ -55,3 +56,12 @@ out/
 
 # NumPy compressed output
 *.npz
+
+# C-language
+*.o
+*.out
+a.out
+*.exe
+*.dSYM/
+build/
+

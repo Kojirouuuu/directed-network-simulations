@@ -59,10 +59,12 @@ public final class SARSimulator {
     private final ArrayList<Integer> S = new ArrayList<>(); // 各時刻の Susceptible 数
     private final ArrayList<Integer> A = new ArrayList<>(); // 各時刻の Adopted 数
     private final ArrayList<Integer> R = new ArrayList<>(); // 各時刻の Recovered 数
+    private final ArrayList<Integer> Phi = new ArrayList<>(); // 各時刻のあと一回の伝播で採用されるノード数
 
     private int Scount; // 現在の Susceptible 数
     private int Acount; // 現在の Adopted 数
     private int Rcount; // 現在の Recovered 数
+    private int PhiCount; // 現在のあと一回の伝播で採用されるノード数
     private double initialAdoptedTime; // 初期採用時刻
     private double finalAdoptedTime; // 最終採用時刻
     
@@ -117,6 +119,7 @@ public final class SARSimulator {
         Scount = n;
         Acount = 0;
         Rcount = 0;
+        PhiCount = 0;
 
         Arrays.fill(infectedCount, 0);
 
@@ -201,7 +204,7 @@ public final class SARSimulator {
             }
         }
 
-        return new SARResult(n, times, S, A, R, initialAdoptedTime, finalAdoptedTime, tInfect, tRecover);
+        return new SARResult(n, times, S, A, R, Phi, initialAdoptedTime, finalAdoptedTime, tInfect, tRecover);
     }
 
     /**
@@ -217,6 +220,7 @@ public final class SARSimulator {
         if (infectedCount[u] >= thresholdList[u]) {
             Scount--;
             Acount++;
+            PhiCount--;
             record(t);
 
             if (initialAdoptedTime == 0) {
@@ -242,6 +246,8 @@ public final class SARSimulator {
                     findTransmit(Q, t, u, v, seqGen, lambdaDirected);
                 }
             }
+        } else if (infectedCount[u] == thresholdList[u] - 1) {
+            PhiCount++;
         }
     }
 
@@ -324,6 +330,7 @@ public final class SARSimulator {
         S.add(Scount);
         A.add(Acount);
         R.add(Rcount);
+        Phi.add(PhiCount);
     }
     
     /**
