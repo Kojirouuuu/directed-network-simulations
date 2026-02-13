@@ -193,9 +193,7 @@ public final class SARSimulator {
             if (t >= tMax) break;
 
             if (ev.type == EventType.TRANSMIT) {
-                if (status[u] == Status.S) {
-                    processTransmit(u, t, Q, () -> seqGen.next());
-                }
+                processTransmit(u, t, Q, () -> seqGen.next());
             } else {
                 // EventType.RECOVER
                 if (status[u] == Status.A && t == recTime[u]) {
@@ -218,32 +216,34 @@ public final class SARSimulator {
     private void processTransmit(int u, double t, PriorityQueue<Event> Q, SeqGen seqGen) {
         infectedCount[u]++;
         if (infectedCount[u] >= thresholdList[u]) {
-            Scount--;
-            Acount++;
-            PhiCount--;
-            record(t);
+            if (status[u] == Status.S) {
+                Scount--;
+                Acount++;
+                PhiCount--;
+                record(t);
 
-            if (initialAdoptedTime == 0) {
-                initialAdoptedTime = t;
-            }
-            finalAdoptedTime = t;
+                if (initialAdoptedTime == 0) {
+                    initialAdoptedTime = t;
+                }
+                finalAdoptedTime = t;
 
-            status[u] = Status.A;
-            tInfect[u] = t;
+                status[u] = Status.A;
+                tInfect[u] = t;
 
-            double tRec = t + exp(mu);
-            recTime[u] = tRec;
-            if (tRec < tMax) {
-                Q.add(new Event(tRec, u, EventType.RECOVER, seqGen.next()));
-            }
+                double tRec = t + exp(mu);
+                recTime[u] = tRec;
+                if (tRec < tMax) {
+                    Q.add(new Event(tRec, u, EventType.RECOVER, seqGen.next()));
+                }
 
-            IntRange outNeighborRange = g.outNeighborRange(u);
-            for (int e = outNeighborRange.start; e < outNeighborRange.end; e++) {
-                int v = g.getOutNeighbor(e);
-                if (g.isOutUndirected(e)) {
-                    findTransmit(Q, t, u, v, seqGen, lambdaNondirected);
-                } else {
-                    findTransmit(Q, t, u, v, seqGen, lambdaDirected);
+                IntRange outNeighborRange = g.outNeighborRange(u);
+                for (int e = outNeighborRange.start; e < outNeighborRange.end; e++) {
+                    int v = g.getOutNeighbor(e);
+                    if (g.isOutUndirected(e)) {
+                        findTransmit(Q, t, u, v, seqGen, lambdaNondirected);
+                    } else {
+                        findTransmit(Q, t, u, v, seqGen, lambdaDirected);
+                    }
                 }
             }
         } else if (infectedCount[u] == thresholdList[u] - 1) {

@@ -269,7 +269,7 @@ public class SAR {
      */
     private static class SimulationConfig {
         final String networkType = "DirectedCMOutPow"; // ネットワークタイプ
-        final int N = 10_000; // 頂点数
+        final int N = 100_000; // 頂点数
         final int kInMin = 3; // 最小入次数
         final int kInMax = N - 1; // 最大入次数
         final int kOutMin = 3; // 最小出次数
@@ -289,13 +289,13 @@ public class SAR {
         final double lambdaNonDirectedMin = 0.0;
         final double lambdaNonDirectedMax = 10.0;
         final double lambdaNonDirectedStep = 0.1;
-        final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax, lambdaNonDirectedStep); // 無向辺の感染率
-        // final double[] lambdaNondirectedList = { 0.0, 1.0 }; // 無向辺の感染率
+        // final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax, lambdaNonDirectedStep); // 無向辺の感染率
+        final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
         final double rho0Min = 0.0;
-        final double rho0Max = 0.2;
-        final double rho0Step = 0.002;
+        final double rho0Max = 0.3;
+        final double rho0Step = 0.003;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); // 初期感染率のリスト
-        final double[] rho0List = { 0.05, 0.15 }; // 初期感染率のリスト
-        final int threshold = 3; // 閾値
+        final double[] rho0List = { 0.15 }; // 初期感染率のリスト
+        final int threshold = 1; // 閾値
     }
 }
