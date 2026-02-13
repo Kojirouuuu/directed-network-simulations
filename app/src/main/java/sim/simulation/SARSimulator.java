@@ -153,6 +153,9 @@ public final class SARSimulator {
             if (u < 0 || u >= n) {
                 throw new IllegalArgumentException("Invalid initial infected: " + u);
             }
+            if (thresholdList[u] - 1 == infectedCount[u]) {
+                PhiCount++;
+            }
             if (seen[u]) {
                 continue;
             }
