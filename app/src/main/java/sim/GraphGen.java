@@ -11,31 +11,31 @@ import java.io.IOException;
 
 public class GraphGen {
     public static void main(String[] args) {
-        int n = 1_000_0000;
+        int n = 50_000;
         int kOutMin = 5;
-        int kOutMax = n - 1;
-        double kuAve = 6.2;
-        double[] gammaList = {2.43};
+        int kOutMax = (int) Math.pow(n, 0.5);
+        double kuAve = 0;
+        double[] gammaList = {2.5};
         int itrs = 10;
 
         for (int itr = 0; itr < itrs; itr++) {
-            // String outputDir = String.format("out/edgelist/n=%d/kHat=%d/", n, kHat);
 
             long seed = 1234567890 + itr * 100;
             for (double gamma : gammaList) {
-                DirectedGraph g = DirectedCMInPow.generate("DirectedCMInPow", n, kOutMin, kOutMax, kuAve, gamma, seed);
+                String outputDir = String.format("out/edgelist/n=%d/gamma=%.2f/kOutMin=%d/kOutMax=%d/", n, gamma, kOutMin, kOutMax);
+                DirectedGraph g = DirectedCMOutPow.generate("DirectedCMOutPow", n, kOutMin, kOutMax, kuAve, gamma, seed);
                 System.out.println("");
                 System.out.println("--------------------------------");
                 g.printInfo();
                 System.out.println("--------------------------------");
                 System.out.println("");
-                // String fileName = String.format("%s_%d.txt", g.name, itr);
-                // Path outputPath = Paths.get(outputDir + fileName);
-                // try {
-                //     g.writeEdgeList(outputPath);
-                // } catch (IOException e) {
-                //     e.printStackTrace();
-                // }
+                String fileName = String.format("%s_%d.txt", g.name, itr);
+                Path outputPath = Paths.get(outputDir + fileName);
+                try {
+                    g.writeEdgeList(outputPath);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

@@ -314,7 +314,7 @@ static double rhs_Phi(const DegreeDist *D, const DynamicsConfig *p, const double
             continue;
         if (theta_d == 1.0) {
             if (p->T == 1) {
-                return 1.0 - p->rho0;
+                return 1.0;
             }
             return 0.0;
         }
@@ -438,16 +438,16 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 int main(void) {
     int N = 1000000;
     EBCMConfig cfg = {
-        .ki = {.mean = 15.0, .min = 0, .max = N - 1, .gamma = 2.43, .type = "Poi"},
+        .ki = {.mean = 12.0, .min = 0, .max = N - 1, .gamma = 2.5, .type = "Poi"},
     };
     double mu = 1.0;
 
-    const int T_list[] = {1, 2, 3, 4};
+    const int T_list[] = {2, 3, 4};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
-    const double lambda_d_max = 1.0;
-    const double lambda_d_step = 0.005;
+    const double lambda_d_max = 2.0;
+    const double lambda_d_step = 0.01;
 
     const double rho0_min = 0.0;
     const double rho0_max = 0.4;

@@ -119,6 +119,38 @@ public final class DirectedGraph {
     }
 
     /**
+     * 有向辺を全て逆向きにした新しいグラフを返す。
+     * 元の辺 (u, v) は (v, u) になる。無向辺はそのまま（両方向のまま）扱われる。
+     * 頂点数・辺数は変わらない。
+     *
+     * @return 有向辺を反転した新しい DirectedGraph（名前は name + "_reversed"）
+     */
+    public DirectedGraph reverseDirectedEdges() {
+        return reverseDirectedEdges(name + "_reversed");
+    }
+
+    /**
+     * 有向辺を全て逆向きにした新しいグラフを返す（名前指定版）。
+     * 元の辺 (u, v) は (v, u) になる。無向辺はそのまま扱われる。
+     *
+     * @param newName 返すグラフの名前（null の場合は name + "_reversed"）
+     * @return 有向辺を反転した新しい DirectedGraph
+     */
+    public DirectedGraph reverseDirectedEdges(String newName) {
+        String resultName = newName != null ? newName : name + "_reversed";
+        return new DirectedGraph(
+                resultName,
+                n,
+                m,
+                inPtr,
+                inIdx,
+                inIsUndirected,
+                outPtr,
+                outIdx,
+                outIsUndirected);
+    }
+
+    /**
      * 有向辺リストから DirectedGraph を構築する。
      *
      * @param name グラフの名前

@@ -272,19 +272,19 @@ public class SAR {
         final String path = "valious_T";
         final int N = 100_000; // 頂点数
         final int kInMin = 5; // 最小入次数
-        final int kInMax = N - 1; // 最大入次数
+        final int kInMax = (int) Math.pow(N, 0.5); // 最大入次数
         final int kOutMin = 5; // 最小出次数
-        final int kOutMax = N - 1; // 最大出次数
-        final double kuAve = 6.2; // 平均次数
-        final double gamma = 2.43;
+        final int kOutMax = (int) Math.pow(N, 0.5); // 最大出次数
+        final double kuAve = 0; // 平均次数
+        final double gamma = 2.5;
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 16; // バッチサイズ
         final int itrs = 20; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 1.0;
-        final double lambdaDirectedStep = 0.05;
+        final double lambdaDirectedMax = 2.0;
+        final double lambdaDirectedStep = 0.01;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
         // final double[] lambdaDirectedList = { 0.001, 0.01, 0.1, 0.2 };
         final double lambdaNonDirectedMin = 0.0;
@@ -294,9 +294,9 @@ public class SAR {
         final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
         final double rho0Min = 0.0;
         final double rho0Max = 0.4;
-        final double rho0Step = 0.004;
+        final double rho0Step = 0.04;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); // 初期感染率のリスト
         final double[] rho0List = { 0.1 }; // 初期感染率のリスト
-        final int threshold = 3; // 閾値
+        final int threshold = 2; // 閾値
     }
 }
