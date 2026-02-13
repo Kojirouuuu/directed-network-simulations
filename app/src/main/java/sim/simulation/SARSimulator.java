@@ -127,6 +127,10 @@ public final class SARSimulator {
             status[u] = Status.S;
             predInfTime[u] = Double.POSITIVE_INFINITY;
             recTime[u] = Double.POSITIVE_INFINITY;
+
+            if (thresholdList[u] == 1) {
+                PhiCount++;
+            }
         }
 
         final Comparator<Event> cmp = (a, b) -> {
@@ -153,15 +157,12 @@ public final class SARSimulator {
             if (u < 0 || u >= n) {
                 throw new IllegalArgumentException("Invalid initial infected: " + u);
             }
-            if (thresholdList[u] - 1 == infectedCount[u]) {
-                PhiCount++;
-            }
             if (seen[u]) {
                 continue;
             }
             seen[u] = true;
             // 初期感染者は threshold に達しているとみなす
-            infectedCount[u] = thresholdList[u];
+            // infectedCount[u] = thresholdList[u];
             // 初期感染者を直接感染者（A）に設定
             Scount--;
             Acount++;
@@ -218,11 +219,11 @@ public final class SARSimulator {
      */
     private void processTransmit(int u, double t, PriorityQueue<Event> Q, SeqGen seqGen) {
         infectedCount[u]++;
-        if (infectedCount[u] >= thresholdList[u]) {
+        if (infectedCount[u] == thresholdList[u]) {
+            PhiCount--;
             if (status[u] == Status.S) {
                 Scount--;
                 Acount++;
-                PhiCount--;
                 record(t);
 
                 if (initialAdoptedTime == 0) {
@@ -265,9 +266,6 @@ public final class SARSimulator {
      * @param lambda 感染率
      */
     private void findTransmit(PriorityQueue<Event> Q, double t, int source, int target, SeqGen seqGen, double lambda) {
-        if (status[target] != Status.S) {
-            return;
-        }
 
         double tInf = t + exp(lambda);
 

@@ -326,8 +326,8 @@ static double rhs_Phi(const DegreeDist *D, const DynamicsConfig *p, const double
             continue;
         }
         double q = 1.0 - theta_d;
-        double Phi = Binom[k * (D->ki_max + 1) + p->T - 1] * pow(theta_d, (double)(k)) *
-                     pow(q, (double)(p->T - 1));
+        double Phi = Binom[k * (D->ki_max + 1) + p->T - 1] *
+                     pow(theta_d, (double)(k) - (double)(p->T - 1)) * pow(q, (double)(p->T - 1));
         s += pk * Phi;
     }
     return (1.0 - p->rho0) * s;
@@ -436,9 +436,9 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 #define MAX_GD_ROOTS 32
 
 int main(void) {
-    int N = 10000;
+    int N = 1000000;
     EBCMConfig cfg = {
-        .ki = {.mean = 6.2, .min = 0, .max = N - 1, .gamma = 2.7, .type = "Poi"},
+        .ki = {.mean = 15.0, .min = 0, .max = N - 1, .gamma = 2.43, .type = "Poi"},
     };
     double mu = 1.0;
 
@@ -446,12 +446,12 @@ int main(void) {
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
-    const double lambda_d_max = 10.0;
-    const double lambda_d_step = 0.01;
+    const double lambda_d_max = 1.0;
+    const double lambda_d_step = 0.005;
 
     const double rho0_min = 0.0;
-    const double rho0_max = 0.3;
-    const double rho0_step = 0.0003;
+    const double rho0_max = 0.4;
+    const double rho0_step = 0.002;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 
@@ -557,7 +557,7 @@ int main(void) {
         }
 
         bool prime_found = false;
-        double delta_min = 0.02;
+        double delta_min = 0.016;
         for (int r = 0; r < n_roots_prime; r++) {
             double root = roots_prime[r];
             double delta = fabs(root - valid_theta_d);
@@ -568,7 +568,7 @@ int main(void) {
         }
 
         bool prime_prime_found = false;
-        double delta_min_prime_prime = 0.031;
+        double delta_min_prime_prime = 0.029;
         if (prime_found && T > 1) {
             for (int r = 0; r < n_roots_prime_prime; r++) {
                 double root = roots_prime_prime[r];

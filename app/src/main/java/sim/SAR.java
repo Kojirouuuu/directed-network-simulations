@@ -138,11 +138,11 @@ public class SAR {
         String networkPath = g.name;
 
         Path basePath = switch (config.networkType) {
-            case "DirectedCM" -> Paths.get(String.format("out/fastsar/%s/threshold=%d/N=%d/kuAve=%d", networkPath, config.threshold,
+            case "DirectedCM" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/kuAve=%d", config.path, networkPath, config.threshold,
                     config.N, config.kuAve));
-            case "DirectedCMInPow" -> Paths.get(String.format("out/fastsar/%s/threshold=%d/N=%d/kInMin=%d", networkPath, config.threshold,
+            case "DirectedCMInPow" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/kInMin=%d", config.path, networkPath, config.threshold,
                     config.N, config.kInMin));
-            case "DirectedCMOutPow" -> Paths.get(String.format("out/fastsar/%s/threshold=%d/N=%d/kOutMin=%d", networkPath, config.threshold,
+            case "DirectedCMOutPow" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/kOutMin=%d", config.path, networkPath, config.threshold,
                     config.N, config.kOutMin));
             default -> throw new IllegalArgumentException("Unknown network type: " + config.networkType);
         };
@@ -269,21 +269,22 @@ public class SAR {
      */
     private static class SimulationConfig {
         final String networkType = "DirectedCMOutPow"; // ネットワークタイプ
-        final int N = 500_000; // 頂点数
-        final int kInMin = 3; // 最小入次数
+        final String path = "valious_T";
+        final int N = 100_000; // 頂点数
+        final int kInMin = 5; // 最小入次数
         final int kInMax = N - 1; // 最大入次数
-        final int kOutMin = 3; // 最小出次数
+        final int kOutMin = 5; // 最小出次数
         final int kOutMax = N - 1; // 最大出次数
         final double kuAve = 6.2; // 平均次数
-        final double gamma = 2.7;
+        final double gamma = 2.43;
         final boolean isFinal = true; // 最終状態のみ出力するか
-        final int batchSize = 20; // バッチサイズ
+        final int batchSize = 16; // バッチサイズ
         final int itrs = 20; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 10.0;
-        final double lambdaDirectedStep = 0.1;
+        final double lambdaDirectedMax = 1.0;
+        final double lambdaDirectedStep = 0.05;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
         // final double[] lambdaDirectedList = { 0.001, 0.01, 0.1, 0.2 };
         final double lambdaNonDirectedMin = 0.0;
@@ -292,10 +293,10 @@ public class SAR {
         // final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax, lambdaNonDirectedStep); // 無向辺の感染率
         final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
         final double rho0Min = 0.0;
-        final double rho0Max = 0.3;
-        final double rho0Step = 0.003;
+        final double rho0Max = 0.4;
+        final double rho0Step = 0.004;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); // 初期感染率のリスト
-        final double[] rho0List = { 0.15 }; // 初期感染率のリスト
+        final double[] rho0List = { 0.1 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
     }
 }

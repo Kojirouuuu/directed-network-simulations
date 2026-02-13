@@ -12,10 +12,10 @@ import java.io.IOException;
 public class GraphGen {
     public static void main(String[] args) {
         int n = 1_000_0000;
-        int kOutMin = 3;
+        int kOutMin = 5;
         int kOutMax = n - 1;
         double kuAve = 6.2;
-        double[] gammaList = {2.7};
+        double[] gammaList = {2.43};
         int itrs = 10;
 
         for (int itr = 0; itr < itrs; itr++) {

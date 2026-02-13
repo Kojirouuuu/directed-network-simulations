@@ -16,10 +16,10 @@ import sim.network.DirectedGraph;
 public class App {
     public static void main(String[] args) {
         int n = 100_000;
-        int kOutMin = 3;
+        int kOutMin = 5;
         int kOutMax = n - 1;
-        int kuAve = 4;
-        double gamma = 2.4;
+        int kuAve = 0;
+        double gamma = 2.43;
         int itrs = 1000;
         int[] directedConnectedSizes = new int[itrs];
         int[] undirectedConnectedSizes = new int[itrs];
