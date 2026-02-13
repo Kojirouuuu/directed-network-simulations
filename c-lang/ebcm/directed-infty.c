@@ -313,6 +313,9 @@ static double rhs_Phi(const DegreeDist *D, const DynamicsConfig *p, const double
         if (pk == 0.0)
             continue;
         if (theta_d == 1.0) {
+            if (p->T == 1) {
+                return 1.0 - p->rho0;
+            }
             return 0.0;
         }
         if (p->T == 1) {
@@ -439,7 +442,7 @@ int main(void) {
     };
     double mu = 1.0;
 
-    const int T_list[] = {1, 2, 3, 4, 5};
+    const int T_list[] = {1, 2, 3, 4};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
