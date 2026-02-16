@@ -14,7 +14,7 @@ def configure_output_path(
     abst: str,
     threshold: int,
     network_type: str,
-    k: int,
+    k: float,
 ) -> str:
     """出力パスを構築する。
     
@@ -28,9 +28,13 @@ def configure_output_path(
     """
 
     if network_type == "DirectedCMOutPow":
+        k = int(k)
         k_path = f"kOutMin={k}"
     elif network_type == "DirectedCMInPow":
+        k = int(k)
         k_path = f"kInMin={k}"
+    elif network_type == "ER":
+        k_path = f"z={k:.2f}"
     else:
         raise ValueError(f"Unknown network type: {network_type}")
     

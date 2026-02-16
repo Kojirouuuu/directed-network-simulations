@@ -74,23 +74,23 @@ typedef struct {
 
 // EBCM 全体の次数分布設定
 typedef struct {
-    DegreeConfig ki;
+    DegreeConfig ku;
 } EBCMConfig;
 
 // ダイナミクスパラメータ（lambda, mu, rho0, T）
 typedef struct {
     int T;
     double rho0;
-    double lambda_d;
+    double lambda_u;
     double mu;
 } DynamicsConfig;
 
 typedef struct {
-    int ki_min, ki_max;
-    double *Pi;
-    double mean_ki;
-    const char *type_i;
-    double gamma_i;
+    int ku_min, ku_max;
+    double *Pu;
+    double mean_ku;
+    const char *type_u;
+    double gamma_u;
 } DegreeDist;
 
 /* 分布タイプに応じた実効的な最大次数（ループ範囲に使う） */
@@ -116,7 +116,7 @@ double *create_degree_dist(double mean, int min, int max, double gamma, const ch
 }
 
 DegreeDist *build_all_degree_dist(const EBCMConfig *cfg) {
-    const DegreeConfig *ki = &cfg->ki;
+    const DegreeConfig *ku = &cfg->ku;
 
     DegreeDist *D = calloc(1, sizeof *D);
     if (!D) {
@@ -124,18 +124,18 @@ DegreeDist *build_all_degree_dist(const EBCMConfig *cfg) {
         exit(1);
     }
 
-    D->type_i = ki->type;
-    D->gamma_i = ki->gamma;
+    D->type_u = ku->type;
+    D->gamma_u = ku->gamma;
 
-    D->ki_min = (strcmp(D->type_i, "Pow") == 0) ? ki->min : 0;
-    D->ki_max = get_effective_degree_max(D->type_i, ki->mean, ki->max);
+    D->ku_min = (strcmp(D->type_u, "Pow") == 0) ? ku->min : 0;
+    D->ku_max = get_effective_degree_max(D->type_u, ku->mean, ku->max);
 
-    D->mean_ki = (strcmp(D->type_i, "Pow") == 0)
-                     ? calculate_mean_powerlaw(D->ki_min, D->ki_max, D->gamma_i)
-                     : ki->mean;
+    D->mean_ku = (strcmp(D->type_u, "Pow") == 0)
+                     ? calculate_mean_powerlaw(D->ku_min, D->ku_max, D->gamma_u)
+                     : ku->mean;
 
     // 配列生成（Poisson のとき min は無視される設計）
-    D->Pi = create_degree_dist(D->mean_ki, D->ki_min, D->ki_max, D->gamma_i, D->type_i);
+    D->Pu = create_degree_dist(D->mean_ku, D->ku_min, D->ku_max, D->gamma_u, D->type_u);
 
     return D;
 }
@@ -156,186 +156,193 @@ static double *build_binom(int kmax) {
     return Binom;
 }
 
-static double Theta_d(const double *Binom, int ki, int kmax, int T, double theta_d) {
-    if (theta_d == 1.0) {
+static double Theta_u(const double *Binom, int ku_minus_1, int kmax, int T, double theta_u) {
+    if (theta_u == 1.0) {
         return 1.0;
     }
     if (T == 1) {
-        return pow(theta_d, (double)ki);
+        return pow(theta_u, (double)ku_minus_1);
     }
-    if (ki == 0) {
+    if (ku_minus_1 == 0) {
         return 1.0;
     }
-    int md_max = (ki < T - 1) ? ki : T - 1;
+    int md_max = (ku_minus_1 < T - 1) ? ku_minus_1 : T - 1;
     double sum = 0.0;
-    double q = 1.0 - theta_d;
+    double q = 1.0 - theta_u;
 
     for (int md = 0; md <= md_max; md++) {
-        sum += Binom[ki * (kmax + 1) + md] * pow(theta_d, (double)(ki - md)) * pow(q, (double)md);
+        sum += Binom[ku_minus_1 * (kmax + 1) + md] * pow(theta_u, (double)(ku_minus_1 - md)) *
+               pow(q, (double)md);
     }
     return sum;
 }
 
-static double Theta_d_prime(const double *Binom, int ki, int kmax, int T, double theta_d) {
-    if (ki == 0)
+static double Theta_u_prime(const double *Binom, int ku_minus_1, int kmax, int T, double theta_u) {
+    if (ku_minus_1 == 0)
         return 0.0;
 
     if (T == 1) {
-        // d/dθ θ^ki = ki θ^(ki-1)
-        return (ki == 0) ? 0.0 : (double)ki * pow(theta_d, (double)(ki - 1));
+        // d/dθ θ^(k-1) = (k-1) θ^(k-2)
+        return (double)(ku_minus_1)*pow(theta_u, (double)(ku_minus_1 - 1));
     }
 
-    int md_max = (ki < T - 1) ? ki : T - 1;
-    double q = 1.0 - theta_d;
+    int md_max = (ku_minus_1 < T - 1) ? ku_minus_1 : T - 1;
+    double q = 1.0 - theta_u;
     double sum = 0.0;
 
     for (int md = 0; md <= md_max; md++) {
-        int a = ki - md; // power of theta
-        int b = md;      // power of q
+        int a = ku_minus_1 - md; // power of theta
+        int b = md;              // power of q
 
         double term = 0.0;
 
         // a * theta^(a-1) * q^b
         if (a >= 1) {
-            term += (double)a * pow(theta_d, (double)(a - 1)) * pow(q, (double)b);
+            term += (double)a * pow(theta_u, (double)(a - 1)) * pow(q, (double)b);
         }
         // - b * theta^a * q^(b-1)
         if (b >= 1) {
-            term -= (double)b * pow(theta_d, (double)a) * pow(q, (double)(b - 1));
+            term -= (double)b * pow(theta_u, (double)a) * pow(q, (double)(b - 1));
         }
 
-        sum += Binom[ki * (kmax + 1) + md] * term;
+        sum += Binom[ku_minus_1 * (kmax + 1) + md] * term;
     }
     return sum;
 }
 
-static double Theta_d_prime_prime(const double *Binom, int ki, int kmax, int T, double theta_d) {
+static double Theta_u_prime_prime(const double *Binom, int ku_minus_1, int kmax, int T,
+                                  double theta_u) {
     if (T == 1) {
-        fprintf(stderr, "Theta_d_prime_prime not needed for T=1\n");
+        fprintf(stderr, "Theta_u_prime_prime not needed for T=1\n");
         exit(1);
     }
-    if (ki == 0)
+    if (ku_minus_1 == 0)
         return 0.0;
 
-    int md_max = (ki < T - 1) ? ki : T - 1;
-    double q = 1.0 - theta_d;
+    int md_max = (ku_minus_1 < T - 1) ? ku_minus_1 : T - 1;
+    double q = 1.0 - theta_u;
     double sum = 0.0;
 
     for (int md = 0; md <= md_max; md++) {
-        int a = ki - md; // power of theta
-        int b = md;      // power of q
+        int a = ku_minus_1 - md; // power of theta
+        int b = md;              // power of q
         double term = 0.0;
 
         if (a >= 2) {
-            term += (double)a * (a - 1) * pow(theta_d, (double)(a - 2)) * pow(q, (double)b);
+            term += (double)a * (a - 1) * pow(theta_u, (double)(a - 2)) * pow(q, (double)b);
         }
         if (a >= 1 && b >= 1) {
-            term += -2.0 * (double)a * (double)b * pow(theta_d, (double)(a - 1)) *
+            term += -2.0 * (double)a * (double)b * pow(theta_u, (double)(a - 1)) *
                     pow(q, (double)(b - 1));
         }
         if (b >= 2) {
-            term += (double)b * (b - 1) * pow(theta_d, (double)a) * pow(q, (double)(b - 2));
+            term += (double)b * (b - 1) * pow(theta_u, (double)a) * pow(q, (double)(b - 2));
         }
 
-        sum += Binom[ki * (kmax + 1) + md] * term;
+        sum += Binom[ku_minus_1 * (kmax + 1) + md] * term;
     }
 
     return sum;
 }
 
-static double xiS_directed(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
-                           double theta_d) {
+static double xiS_undirected(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
+                             double theta_u) {
     double s = 0.0;
 
-    for (int k = D->ki_min; k <= D->ki_max; k++) {
-        double pk = D->Pi[k];
-        if (pk == 0.0)
-            continue;
-        double xiS_d = Theta_d(Binom, k, D->ki_max, p->T, theta_d);
-        s += pk * xiS_d;
-    }
-    return (1.0 - p->rho0) * s;
-}
-
-static double xiS_directed_prime(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
-                                 double theta_d) {
-    double s = 0.0;
-
-    for (int k = D->ki_min; k <= D->ki_max; k++) {
-        double pk = D->Pi[k];
-        if (pk == 0.0)
-            continue;
-        double xiS_d_prime = Theta_d_prime(Binom, k, D->ki_max, p->T, theta_d);
-        s += pk * xiS_d_prime;
-    }
-    return (1.0 - p->rho0) * s;
-}
-
-static double xiS_directed_prime_prime(const DegreeDist *D, const DynamicsConfig *p,
-                                       const double *Binom, double theta_d) {
-    double s = 0.0;
-
-    for (int k = D->ki_min; k <= D->ki_max; k++) {
-        double pk = D->Pi[k];
-        if (pk == 0.0)
-            continue;
-        double xiS_d_prime_prime = Theta_d_prime_prime(Binom, k, D->ki_max, p->T, theta_d);
-        s += pk * xiS_d_prime_prime;
-    }
-    return (1.0 - p->rho0) * s;
-}
-
-/* 感受性ノードの割合 S(t) = (1-ρ0) Σ P_i（因数分解時は xiS_directed と同じ） */
-static double compute_S(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
-                        double theta_d) {
-    return xiS_directed(D, p, Binom, theta_d);
-}
-
-static double rhs_Phi(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
-                      double theta_d) {
-    double s = 0.0;
-
-    for (int k = D->ki_min; k <= D->ki_max; k++) {
-        double pk = D->Pi[k];
-        if (pk == 0.0)
-            continue;
-        if (theta_d == 1.0) {
-            if (p->T == 1) {
-                return 1.0;
-            }
-            return 0.0;
-        }
-        if (p->T == 1) {
-            s += pk * pow(theta_d, (double)k);
-            continue;
-        }
+    for (int k = D->ku_min; k <= D->ku_max; k++) {
         if (k == 0) {
             continue;
         }
-        double q = 1.0 - theta_d;
-        double Phi = Binom[k * (D->ki_max + 1) + p->T - 1] *
-                     pow(theta_d, (double)(k) - (double)(p->T - 1)) * pow(q, (double)(p->T - 1));
-        s += pk * Phi;
+        double pk = D->Pu[k];
+        if (pk == 0.0)
+            continue;
+        double xiS_u = Theta_u(Binom, k - 1, D->ku_max, p->T, theta_u);
+        s += (double)k * pk * xiS_u;
     }
+    return (1.0 - p->rho0) * s / (double)D->mean_ku;
+}
+
+static double xiS_undirected_prime(const DegreeDist *D, const DynamicsConfig *p,
+                                   const double *Binom, double theta_u) {
+    double s = 0.0;
+
+    for (int k = D->ku_min; k <= D->ku_max; k++) {
+        if (k == 0) {
+            continue;
+        }
+        double pk = D->Pu[k];
+        if (pk == 0.0)
+            continue;
+        double xiS_u_prime = Theta_u_prime(Binom, k - 1, D->ku_max, p->T, theta_u);
+        s += (double)k * pk * xiS_u_prime;
+    }
+    return (1.0 - p->rho0) * s / (double)D->mean_ku;
+}
+
+static double xiS_undirected_prime_prime(const DegreeDist *D, const DynamicsConfig *p,
+                                         const double *Binom, double theta_u) {
+    double s = 0.0;
+
+    for (int k = D->ku_min; k <= D->ku_max; k++) {
+        if (k == 0) {
+            continue;
+        }
+        double pk = D->Pu[k];
+        if (pk == 0.0)
+            continue;
+        double xiS_u_prime_prime = Theta_u_prime_prime(Binom, k - 1, D->ku_max, p->T, theta_u);
+        s += (double)k * pk * xiS_u_prime_prime;
+    }
+    return (1.0 - p->rho0) * s / (double)D->mean_ku;
+}
+
+/* 感受性ノードの割合 S(t) = (1-ρ0) Σ k*P(k)/⟨k⟩ * Theta_u */
+static double compute_S(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
+                        double theta_u) {
+    return xiS_undirected(D, p, Binom, theta_u);
+}
+
+static double rhs_Phi(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
+                      double theta_u) {
+    int m = p->T - 1; // subcritical: m = T-1
+    if (m < 0)
+        return 0.0;
+
+    double q = 1.0 - theta_u;
+    double s = 0.0;
+    int stride = D->ku_max + 1;
+
+    for (int k = D->ku_min; k <= D->ku_max; k++) {
+        double pk = D->Pu[k];
+        if (pk == 0.0)
+            continue;
+
+        if (k < m)
+            continue; // C(k,m)=0 の領域を明示的に除外
+
+        double Ckm = Binom[k * stride + m]; // binom(k,m)
+        s += pk * Ckm * pow(theta_u, (double)(k - m)) * pow(q, (double)m);
+    }
+
     return (1.0 - p->rho0) * s;
 }
 
-static double g_d(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
-                  double theta_d) {
-    double xiS_d = xiS_directed(D, p, Binom, theta_d);
-    return -p->lambda_d * (theta_d - xiS_d) + p->mu * (1.0 - theta_d);
+static double g_u(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
+                  double theta_u) {
+    double xiS_u = xiS_undirected(D, p, Binom, theta_u);
+    return -p->lambda_u * (theta_u - xiS_u) + p->mu * (1.0 - theta_u);
 }
 
-static double g_d_prime(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
-                        double theta_d) {
-    double xiS_d_prime = xiS_directed_prime(D, p, Binom, theta_d);
-    return -p->lambda_d * (1 - xiS_d_prime) - p->mu;
+static double g_u_prime(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
+                        double theta_u) {
+    double xiS_u_prime = xiS_undirected_prime(D, p, Binom, theta_u);
+    return -p->lambda_u * (1 - xiS_u_prime) - p->mu;
 }
 
-static double g_d_prime_prime(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
-                              double theta_d) {
-    double xiS_d_prime_prime = xiS_directed_prime_prime(D, p, Binom, theta_d);
-    return p->lambda_d * xiS_d_prime_prime;
+static double g_u_prime_prime(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
+                              double theta_u) {
+    double xiS_u_prime_prime = xiS_undirected_prime_prime(D, p, Binom, theta_u);
+    return p->lambda_u * xiS_u_prime_prime;
 }
 
 typedef double (*Func)(const DegreeDist *, const DynamicsConfig *, const double *, double);
@@ -425,65 +432,65 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 int main(void) {
     int N = 100000;
     EBCMConfig cfg = {
-        .ki = {.mean = 12.0, .min = 0, .max = N, .gamma = 2.5, .type = "Poi"},
+        .ku = {.mean = 12.0, .min = 5, .max = N, .gamma = 2.5, .type = "Pow"},
     };
     double mu = 1.0;
 
     const int T_list[] = {1, 2, 3, 4};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
-    const double lambda_d_min = 0.0;
-    const double lambda_d_max = 2.0;
-    const double lambda_d_step = 0.01;
+    const double lambda_u_min = 0.0;
+    const double lambda_u_max = 0.2;
+    const double lambda_u_step = 0.001;
 
     const double rho0_min = 0.0;
     const double rho0_max = 0.4;
     const double rho0_step = 0.002;
 
-    const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
+    const double theta_search_step = 0.005; /* g_u=0 の根探索の刻み */
 
     int total_tasks = 0;
     int rho0_tasks = 0;
     for (double rho0 = rho0_min; rho0 <= rho0_max + 1e-6; rho0 += rho0_step) {
         rho0_tasks++;
     }
-    int lambda_d_tasks = 0;
-    for (double lambda_d = lambda_d_min; lambda_d <= lambda_d_max + 1e-6;
-         lambda_d += lambda_d_step) {
-        lambda_d_tasks++;
+    int lambda_u_tasks = 0;
+    for (double lambda_u = lambda_u_min; lambda_u <= lambda_u_max + 1e-6;
+         lambda_u += lambda_u_step) {
+        lambda_u_tasks++;
     }
-    total_tasks = T_count * rho0_tasks * lambda_d_tasks;
+    total_tasks = T_count * rho0_tasks * lambda_u_tasks;
 
     DegreeDist *D = build_all_degree_dist(&cfg);
-    double *Binom = build_binom(D->ki_max);
+    double *Binom = build_binom(D->ku_max);
 
     const int progress_width = 100;
     char dirbuf[256];
     char pathbuf[256];
-    snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/%s", cfg.ki.type);
-    mkdir("out/ebcm/directed-infty", 0755); /* 親が無いと子が作れない */
+    snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/%s", cfg.ku.type);
+    mkdir("out/ebcm/undirected-infty", 0755); /* 親が無いと子が作れない */
     mkdir(dirbuf, 0755);
 
-    snprintf(pathbuf, sizeof pathbuf, "%s/gd_zero.csv", dirbuf);
-    FILE *fp_gd = fopen(pathbuf, "w");
-    snprintf(pathbuf, sizeof pathbuf, "%s/gdp_zero.csv", dirbuf);
-    FILE *fp_gdp = fopen(pathbuf, "w");
-    snprintf(pathbuf, sizeof pathbuf, "%s/gdpp_zero.csv", dirbuf);
-    FILE *fp_gdpp = fopen(pathbuf, "w");
-    snprintf(pathbuf, sizeof pathbuf, "%s/gd_gdp_zero.csv", dirbuf);
-    FILE *fp_gd_gdp_zero = fopen(pathbuf, "w");
-    snprintf(pathbuf, sizeof pathbuf, "%s/gd_gdp_gdpp_zero.csv", dirbuf);
-    FILE *fp_gd_gdp_gdpp_zero = fopen(pathbuf, "w");
-    if (fp_gd == NULL || fp_gdp == NULL || fp_gdpp == NULL || fp_gd_gdp_zero == NULL ||
-        fp_gd_gdp_gdpp_zero == NULL) {
+    snprintf(pathbuf, sizeof pathbuf, "%s/gu_zero.csv", dirbuf);
+    FILE *fp_gu = fopen(pathbuf, "w");
+    snprintf(pathbuf, sizeof pathbuf, "%s/gup_zero.csv", dirbuf);
+    FILE *fp_gup = fopen(pathbuf, "w");
+    snprintf(pathbuf, sizeof pathbuf, "%s/gupp_zero.csv", dirbuf);
+    FILE *fp_gupp = fopen(pathbuf, "w");
+    snprintf(pathbuf, sizeof pathbuf, "%s/gu_gup_zero.csv", dirbuf);
+    FILE *fp_gu_gup_zero = fopen(pathbuf, "w");
+    snprintf(pathbuf, sizeof pathbuf, "%s/gu_gup_gupp_zero.csv", dirbuf);
+    FILE *fp_gu_gup_gupp_zero = fopen(pathbuf, "w");
+    if (fp_gu == NULL || fp_gup == NULL || fp_gupp == NULL || fp_gu_gup_zero == NULL ||
+        fp_gu_gup_gupp_zero == NULL) {
         perror("fopen");
         return 1;
     }
-    fprintf(fp_gd, "T,rho0,lambda_d,mu,theta_d,R,Phi\n");
-    fprintf(fp_gdp, "T,rho0,lambda_d,mu,theta_d\n");
-    fprintf(fp_gdpp, "T,rho0,lambda_d,mu,theta_d\n");
-    fprintf(fp_gd_gdp_zero, "T,rho0,lambda_d,mu,theta_d\n");
-    fprintf(fp_gd_gdp_gdpp_zero, "T,rho0,lambda_d,mu\n");
+    fprintf(fp_gu, "T,rho0,lambda_u,mu,theta_u,R,Phi\n");
+    fprintf(fp_gup, "T,rho0,lambda_u,mu,theta_u\n");
+    fprintf(fp_gupp, "T,rho0,lambda_u,mu,theta_u\n");
+    fprintf(fp_gu_gup_zero, "T,rho0,lambda_u,mu,theta_u\n");
+    fprintf(fp_gu_gup_gupp_zero, "T,rho0,lambda_u,mu\n");
     /* 実行開始時刻・進捗 */
     time_t t_start = time(NULL);
     struct tm *tm_start = localtime(&t_start);
@@ -505,20 +512,20 @@ int main(void) {
 #pragma omp parallel for schedule(dynamic)
     for (int task = 0; task < total_tasks; task++) {
         /* T, rho, lambda の順: task = ii*(rho*lambda) + jj*lambda + kk */
-        int ii = task / (rho0_tasks * lambda_d_tasks); /* T index */
-        int jj = (task / lambda_d_tasks) % rho0_tasks; /* rho index */
-        int kk = task % lambda_d_tasks;                /* lambda index */
+        int ii = task / (rho0_tasks * lambda_u_tasks); /* T index */
+        int jj = (task / lambda_u_tasks) % rho0_tasks; /* rho index */
+        int kk = task % lambda_u_tasks;                /* lambda index */
         int T = T_list[ii];
         double rho0 = rho0_min + jj * rho0_step;
-        double lambda_d = lambda_d_min + kk * lambda_d_step;
+        double lambda_u = lambda_u_min + kk * lambda_u_step;
         DynamicsConfig dynamics = {
             .T = T,
             .rho0 = rho0,
-            .lambda_d = lambda_d,
+            .lambda_u = lambda_u,
             .mu = mu,
         };
 
-        /* g_d(theta)=0 を満たす theta in [0,1] の根を列挙し、最大を採用 */
+        /* g_u(theta)=0 を満たす theta in [0,1] の根を列挙し、最大を採用 */
         double roots[MAX_GD_ROOTS];
         double roots_prime[MAX_GD_ROOTS];
         double roots_prime_prime[MAX_GD_ROOTS];
@@ -527,7 +534,7 @@ int main(void) {
         int n_roots_prime = 0;
         int n_roots_prime_prime = 0;
 
-        double valid_theta_d = 0.0;
+        double valid_theta_u = 0.0;
 
         double tmin, tmax, step;
         if (T == 1) {
@@ -541,7 +548,7 @@ int main(void) {
         }
 
         if (T == 1 && rho0 == 0.0) {
-            double m = g_d_prime(D, &dynamics, Binom, 1.0);
+            double m = g_u_prime(D, &dynamics, Binom, 1.0);
             if (fabs(m) < 1e-10) {
                 n_roots = 1;
                 roots[0] = 0.0;
@@ -551,48 +558,48 @@ int main(void) {
                 n_roots = 1;
                 roots[0] = 1.0;
             } else {
-                n_roots = find_roots(g_d, D, &dynamics, Binom, tmin, tmax, step, 1e-12, 1000, roots,
+                n_roots = find_roots(g_u, D, &dynamics, Binom, tmin, tmax, step, 1e-12, 1000, roots,
                                      MAX_GD_ROOTS);
                 while (n_roots == 0 && tmin > 0.0) {
                     tmin *= 0.9;
-                    n_roots = find_roots(g_d, D, &dynamics, Binom, tmin, tmax, step, 1e-12, 1000,
+                    n_roots = find_roots(g_u, D, &dynamics, Binom, tmin, tmax, step, 1e-12, 1000,
                                          roots, MAX_GD_ROOTS);
                 }
                 for (int r = 0; r < n_roots; r++) {
-                    if (roots[r] < 1.0 && roots[r] >= valid_theta_d) {
-                        valid_theta_d = roots[r];
+                    if (roots[r] < 1.0 && roots[r] >= valid_theta_u) {
+                        valid_theta_u = roots[r];
                     }
                 }
             }
         } else {
-            n_roots = find_roots(g_d, D, &dynamics, Binom, tmin, tmax, step, 1e-12, 1000, roots,
+            n_roots = find_roots(g_u, D, &dynamics, Binom, tmin, tmax, step, 1e-12, 1000, roots,
                                  MAX_GD_ROOTS);
             while (n_roots == 0 && tmin > 0.0) {
                 tmin *= 0.9;
-                n_roots = find_roots(g_d, D, &dynamics, Binom, tmin, tmax, step, 1e-12, 1000, roots,
+                n_roots = find_roots(g_u, D, &dynamics, Binom, tmin, tmax, step, 1e-12, 1000, roots,
                                      MAX_GD_ROOTS);
             }
             for (int r = 0; r < n_roots; r++) {
-                if (roots[r] <= 1.0 && roots[r] >= valid_theta_d) {
-                    valid_theta_d = roots[r];
+                if (roots[r] <= 1.0 && roots[r] >= valid_theta_u) {
+                    valid_theta_u = roots[r];
                 }
             }
         }
 
-        if (valid_theta_d == 0.0 && T == 1) {
-            valid_theta_d = 1.0;
+        if (valid_theta_u == 0.0 && T == 1) {
+            valid_theta_u = 1.0;
         }
         /* 平衡時は A=0 なので R_inf = 1 - S_inf */
-        double S_inf = compute_S(D, &dynamics, Binom, valid_theta_d);
+        double S_inf = compute_S(D, &dynamics, Binom, valid_theta_u);
         double R_inf = 1.0 - S_inf;
-        double Phi_inf = rhs_Phi(D, &dynamics, Binom, valid_theta_d);
+        double Phi_inf = rhs_Phi(D, &dynamics, Binom, valid_theta_u);
 
-        n_roots_prime = find_roots(g_d_prime, D, &dynamics, Binom, 0.0, 1.0, theta_search_step,
+        n_roots_prime = find_roots(g_u_prime, D, &dynamics, Binom, 0.0, 1.0, theta_search_step,
                                    1e-6, 100, roots_prime, MAX_GD_ROOTS);
 
         if (T > 1) {
             n_roots_prime_prime =
-                find_roots(g_d_prime_prime, D, &dynamics, Binom, 0.0, 1.0, theta_search_step, 1e-6,
+                find_roots(g_u_prime_prime, D, &dynamics, Binom, 0.0, 1.0, theta_search_step, 1e-6,
                            100, roots_prime_prime, MAX_GD_ROOTS);
         }
 
@@ -600,9 +607,9 @@ int main(void) {
         double delta_min = 0.02; // InPow200*200: 0.030
         for (int r = 0; r < n_roots_prime; r++) {
             double root = roots_prime[r];
-            double delta = fabs(root - valid_theta_d);
-            double g_d_check = g_d(D, &dynamics, Binom, root);
-            if (root <= 1.0 && root >= 0.0 && delta < delta_min && fabs(g_d_check) < 1e-3) {
+            double delta = fabs(root - valid_theta_u);
+            double g_u_check = g_u(D, &dynamics, Binom, root);
+            if (root <= 1.0 && root >= 0.0 && delta < delta_min && fabs(g_u_check) < 1e-3) {
                 prime_found = true;
                 delta_min = delta;
             }
@@ -613,11 +620,11 @@ int main(void) {
         if (prime_found && T > 1) {
             for (int r = 0; r < n_roots_prime_prime; r++) {
                 double root = roots_prime_prime[r];
-                double delta = fabs(root - valid_theta_d);
-                double g_d_check = g_d(D, &dynamics, Binom, root);
-                double g_d_prime_check = g_d_prime(D, &dynamics, Binom, root);
+                double delta = fabs(root - valid_theta_u);
+                double g_u_check = g_u(D, &dynamics, Binom, root);
+                double g_u_prime_check = g_u_prime(D, &dynamics, Binom, root);
                 if (root <= 1.0 && root >= 0.0 && delta < delta_min_prime_prime &&
-                    fabs(g_d_prime_check) < 1e-2 * 4 && fabs(g_d_check) < 1e-2 * 4) {
+                    fabs(g_u_prime_check) < 1e-2 * 4 && fabs(g_u_check) < 1e-2 * 4) {
                     prime_prime_found = true;
                     delta_min_prime_prime = delta;
                 }
@@ -626,28 +633,28 @@ int main(void) {
 
 #pragma omp critical
         {
-            fprintf(fp_gd, "%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n", T, rho0, lambda_d, mu,
-                    valid_theta_d, R_inf, Phi_inf);
+            fprintf(fp_gu, "%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n", T, rho0, lambda_u, mu,
+                    valid_theta_u, R_inf, Phi_inf);
             for (int r = 0; r < n_roots_prime; r++) {
                 double root = roots_prime[r];
                 if (root <= 1.0 && root >= 0.0) {
-                    fprintf(fp_gdp, "%d,%.6f,%.6f,%.6f,%.6f\n", T, rho0, lambda_d, mu, root);
+                    fprintf(fp_gup, "%d,%.6f,%.6f,%.6f,%.6f\n", T, rho0, lambda_u, mu, root);
                 }
             }
 
             for (int r = 0; r < n_roots_prime_prime; r++) {
                 if (roots_prime_prime[r] <= 1.0 && roots_prime_prime[r] >= 0.0) {
-                    fprintf(fp_gdpp, "%d,%.6f,%.6f,%.6f,%.6f\n", T, rho0, lambda_d, mu,
+                    fprintf(fp_gupp, "%d,%.6f,%.6f,%.6f,%.6f\n", T, rho0, lambda_u, mu,
                             roots_prime_prime[r]);
                 }
             }
 
             if (prime_found) {
-                fprintf(fp_gd_gdp_zero, "%d,%.6f,%.6f,%.6f,%.6f\n", T, rho0, lambda_d, mu,
-                        valid_theta_d);
+                fprintf(fp_gu_gup_zero, "%d,%.6f,%.6f,%.6f,%.6f\n", T, rho0, lambda_u, mu,
+                        valid_theta_u);
             }
             if (prime_prime_found) {
-                fprintf(fp_gd_gdp_gdpp_zero, "%d,%.6f,%.6f,%.6f\n", T, rho0, lambda_d, mu);
+                fprintf(fp_gu_gup_gupp_zero, "%d,%.6f,%.6f,%.6f\n", T, rho0, lambda_u, mu);
             }
             current_task++;
             if (current_task % 10 == 0 || current_task == total_tasks) {
@@ -668,11 +675,11 @@ int main(void) {
     fprintf(stderr, "\nend: %s | total: %.1f seconds (%.1f minutes)\n", buf_end, elapsed,
             elapsed / 60.0);
 
-    fclose(fp_gd);
-    fclose(fp_gdp);
-    fclose(fp_gdpp);
-    fclose(fp_gd_gdp_zero);
-    fclose(fp_gd_gdp_gdpp_zero);
+    fclose(fp_gu);
+    fclose(fp_gup);
+    fclose(fp_gupp);
+    fclose(fp_gu_gup_zero);
+    fclose(fp_gu_gup_gupp_zero);
     free(Binom);
     free(D);
     return 0;

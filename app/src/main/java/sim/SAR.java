@@ -4,6 +4,7 @@ import sim.network.DirectedGraph;
 import sim.network.topology.DirectedCM;
 import sim.network.topology.DirectedCMInPow;
 import sim.network.topology.DirectedCMOutPow;
+import sim.network.topology.undirected.ER;
 import sim.simulation.SARSimulator;
 import sim.simulation.SARResult;
 import sim.utils.ArrayUtils;
@@ -95,6 +96,7 @@ public class SAR {
                     GRAPH_BASE_SEED + batchIndex);
             case "DirectedCMOutPow" -> DirectedCMOutPow.generate("DirectedCMOutPow", config.N, config.kOutMin, config.kOutMax, config.kuAve, config.gamma,
                     GRAPH_BASE_SEED + batchIndex);
+            case "ER" -> ER.generateERFromKAve(config.N, config.kuAve, GRAPH_BASE_SEED + batchIndex);
             default -> throw new IllegalArgumentException("Unknown network type: " + config.networkType);
         };
 
@@ -144,6 +146,8 @@ public class SAR {
                     config.N, config.kInMin));
             case "DirectedCMOutPow" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/kOutMin=%d", config.path, networkPath, config.threshold,
                     config.N, config.kOutMin));
+            case "ER" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/z=%.2f", config.path, networkPath, config.threshold,
+                    config.N, config.kuAve));
             default -> throw new IllegalArgumentException("Unknown network type: " + config.networkType);
         };
         return PathsEx.resolveIndexed(
@@ -279,24 +283,24 @@ public class SAR {
         final double gamma = 2.5;
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 16; // バッチサイズ
-        final int itrs = 20; // イテレーション数
+        final int itrs = 10; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
         final double lambdaDirectedMax = 2.0;
         final double lambdaDirectedStep = 0.01;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        // final double[] lambdaDirectedList = { 0.001, 0.01, 0.1, 0.2 };
+        // final double[] lambdaDirectedList = { 0.0 };
         final double lambdaNonDirectedMin = 0.0;
-        final double lambdaNonDirectedMax = 10.0;
-        final double lambdaNonDirectedStep = 0.1;
+        final double lambdaNonDirectedMax = 2.0;
+        final double lambdaNonDirectedStep = 0.04;
         // final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax, lambdaNonDirectedStep); // 無向辺の感染率
         final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
         final double rho0Min = 0.0;
         final double rho0Max = 0.4;
-        final double rho0Step = 0.04;
+        final double rho0Step = 0.008;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); // 初期感染率のリスト
         final double[] rho0List = { 0.1 }; // 初期感染率のリスト
-        final int threshold = 2; // 閾値
+        final int threshold = 4; // 閾値
     }
 }

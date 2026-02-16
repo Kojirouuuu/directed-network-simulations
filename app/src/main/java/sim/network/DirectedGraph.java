@@ -416,27 +416,35 @@ public final class DirectedGraph {
         int maxOutDegree = 0;
         int minInDegree = Integer.MAX_VALUE;
         int minOutDegree = Integer.MAX_VALUE;
-        
+
         for (int u = 0; u < n; u++) {
+            int inDirected = 0;
             int inRange = inPtr[u + 1] - inPtr[u];
             for (int i = 0; i < inRange; i++) {
                 if (!isInUndirected(inPtr[u] + i)) {
+                    inDirected++;
                     inAverageDegreeExcludingUndirected++;
-                    maxInDegree = Math.max(maxInDegree, inRange);
-                    minInDegree = Math.min(minInDegree, inRange);
                 }
                 inAverageDegreeIncludingUndirected++;
             }
+            maxInDegree = Math.max(maxInDegree, inDirected);
+            minInDegree = Math.min(minInDegree, inDirected);
 
+            int outDirected = 0;
             int outRange = outPtr[u + 1] - outPtr[u];
             for (int i = 0; i < outRange; i++) {
                 if (!isOutUndirected(outPtr[u] + i)) {
+                    outDirected++;
                     outAverageDegreeExcludingUndirected++;
-                    maxOutDegree = Math.max(maxOutDegree, outRange);
-                    minOutDegree = Math.min(minOutDegree, outRange);
                 }
                 outAverageDegreeIncludingUndirected++;
             }
+            maxOutDegree = Math.max(maxOutDegree, outDirected);
+            minOutDegree = Math.min(minOutDegree, outDirected);
+        }
+        if (n == 0) {
+            minInDegree = 0;
+            minOutDegree = 0;
         }
         inAverageDegreeExcludingUndirected /= n;
         inAverageDegreeIncludingUndirected /= n;
