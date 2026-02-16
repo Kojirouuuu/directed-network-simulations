@@ -34,8 +34,10 @@ venv/
 # ============================================================================
 
 # Test notebook (excluded from version control)
-notebooks/test.ipynb
-notebooks/test2.ipynb
+test-notebooks/
+
+# Notebooks (excluded from version control)
+notebooks/
 
 # Simulation results output directory
 out/
