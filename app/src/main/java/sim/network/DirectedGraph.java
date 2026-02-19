@@ -22,7 +22,7 @@ public final class DirectedGraph {
     private final int[] inPtr; // 長さ n+1 の配列（in-neighbors の開始位置）
     private final int[] inIdx; // 長さ m の配列（in-neighbors の頂点ID）
     private final boolean[] inIsUndirected; // 長さ m の配列（true なら無向由来）
-    
+
     private DirectedGraph(String name, int n, int m, int[] outPtr, int[] outIdx, boolean[] outIsUndirected,
             int[] inPtr, int[] inIdx, boolean[] inIsUndirected) {
         this.name = name;
@@ -341,7 +341,7 @@ public final class DirectedGraph {
             visited[start] = true;
             boolean[] curVisited = new boolean[n];
             curVisited[start] = true;
-            
+
             q.add(start);
             int seen = 1;
 

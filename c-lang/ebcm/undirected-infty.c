@@ -432,7 +432,7 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 int main(void) {
     int N = 100000;
     EBCMConfig cfg = {
-        .ku = {.mean = 12.0, .min = 5, .max = N, .gamma = 2.5, .type = "Pow"},
+        .ku = {.mean = 6.0, .min = 5, .max = N, .gamma = 2.5, .type = "Pow"},
     };
     double mu = 1.0;
 

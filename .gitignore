@@ -49,6 +49,9 @@ out/
 # Visual Studio Code settings
 .vscode/
 
+# Eclipse Java style configuration
+eclipse-java-google-style.xml
+
 # ============================================================================
 # Environment Variables
 # ============================================================================

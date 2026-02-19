@@ -1,18 +1,14 @@
 package sim;
 
 import sim.network.DirectedGraph;
-import sim.network.topology.DirectedCM;
-import sim.network.topology.DirectedCMInPow;
-import sim.network.topology.DirectedCMOutPow;
-import sim.network.topology.undirected.ER;
 import sim.simulation.SARSimulator;
 import sim.simulation.SARResult;
 import sim.utils.ArrayUtils;
 import sim.utils.PathsEx;
+import sim.utils.SwitchUtils;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
@@ -34,10 +30,10 @@ public class SAR {
 
     // シードオフセット（異なる目的で異なるシードを生成するため）
     private static final long SEED_OFFSET_NODES = 2000L; // ノードシャッフル用オフセット
-    
+
     /**
      * メインメソッド。
-     *
+     * 
      * @param args コマンドライン引数
      * @throws Exception 実行エラー
      */
@@ -47,7 +43,8 @@ public class SAR {
         final int rho0Count = config.rho0List.length;
         final int lambdaDirectedCount = config.lambdaDirectedList.length;
         final int lambdaNondirectedCount = config.lambdaNondirectedList.length;
-        final long totalTasks = (long) config.batchSize * config.itrs * rho0Count * lambdaDirectedCount * lambdaNondirectedCount;
+        final long totalTasks = (long) config.batchSize * config.itrs * rho0Count * lambdaDirectedCount
+                * lambdaNondirectedCount;
 
         System.out.println("Total tasks: " + totalTasks);
         System.out.println(config.networkType + ": N=" + config.N + ", itrs=" + config.itrs);
@@ -63,11 +60,8 @@ public class SAR {
         renderer.start();
 
         try (ForkJoinPool pool = new ForkJoinPool(parallelism)) {
-            Future<?> future = pool.submit(() ->
-                    IntStream.range(0, config.batchSize).parallel().forEach(batchIndex ->
-                            processBatch(batchIndex, config, progressItr, done, totalTasks)
-                    )
-            );
+            Future<?> future = pool.submit(() -> IntStream.range(0, config.batchSize).parallel()
+                    .forEach(batchIndex -> processBatch(batchIndex, config, progressItr, done, totalTasks)));
 
             future.get();
         } finally {
@@ -77,28 +71,21 @@ public class SAR {
 
         System.out.println("All tasks completed");
     }
-    
+
     /**
      * 1つのバッチを処理する。
      *
-     * @param batchIndex  バッチインデックス
-     * @param config      シミュレーション設定
+     * @param batchIndex バッチインデックス
+     * @param config シミュレーション設定
      * @param progressItr 進捗記録用配列
-     * @param done        完了タスク数のカウンタ
-     * @param totalTasks  総タスク数
+     * @param done 完了タスク数のカウンタ
+     * @param totalTasks 総タスク数
      */
     private static void processBatch(int batchIndex, SimulationConfig config,
             int[] progressItr, AtomicLong done, long totalTasks) {
-        DirectedGraph g = switch (config.networkType) {
-            // case "DirectedCM" -> DirectedCM.generate("DirectedCM", config.N, config.kInMin, config.kInMax, config.kuAve, config.gamma,
-            //         GRAPH_BASE_SEED + batchIndex);
-            case "DirectedCMInPow" -> DirectedCMInPow.generate("DirectedCMInPow", config.N, config.kInMin, config.kInMax, config.kuAve, config.gamma,
-                    GRAPH_BASE_SEED + batchIndex);
-            case "DirectedCMOutPow" -> DirectedCMOutPow.generate("DirectedCMOutPow", config.N, config.kOutMin, config.kOutMax, config.kuAve, config.gamma,
-                    GRAPH_BASE_SEED + batchIndex);
-            case "ER" -> ER.generateERFromKAve(config.N, config.kuAve, GRAPH_BASE_SEED + batchIndex);
-            default -> throw new IllegalArgumentException("Unknown network type: " + config.networkType);
-        };
+        DirectedGraph g = SwitchUtils.generateGraph(config.networkType, config.N,
+                null, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                config.kuAve, config.gamma, config.m0, config.m, GRAPH_BASE_SEED + batchIndex);
 
         Path resultsPath = prepareOutputPath(g, batchIndex, config);
 
@@ -126,48 +113,39 @@ public class SAR {
 
         progressItr[batchIndex] = config.itrs;
     }
-    
+
     /**
      * 出力パスを準備する。
      *
-     * @param g          グラフ
+     * @param g グラフ
      * @param batchIndex バッチインデックス
-     * @param config     シミュレーション設定
+     * @param config シミュレーション設定
      * @return 出力パス
      */
     private static Path prepareOutputPath(DirectedGraph g, int batchIndex, SimulationConfig config) {
         String idx = String.format("%02d", batchIndex);
-        String networkPath = g.name;
-
-        Path basePath = switch (config.networkType) {
-            case "DirectedCM" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/kuAve=%d", config.path, networkPath, config.threshold,
-                    config.N, config.kuAve));
-            case "DirectedCMInPow" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/kInMin=%d", config.path, networkPath, config.threshold,
-                    config.N, config.kInMin));
-            case "DirectedCMOutPow" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/kOutMin=%d", config.path, networkPath, config.threshold,
-                    config.N, config.kOutMin));
-            case "ER" -> Paths.get(String.format("out/fastsar/%s/%s/threshold=%d/N=%d/z=%.2f", config.path, networkPath, config.threshold,
-                    config.N, config.kuAve));
-            default -> throw new IllegalArgumentException("Unknown network type: " + config.networkType);
-        };
+        Path outputDir = SwitchUtils.buildSimulationOutputDir(config.optionPath, config.threshold);
+        Path networkPath = SwitchUtils.buildNetworkPath(
+                config.networkType, config.N,
+                null, config.kInMin, config.kOutMin, null, config.m0, config.m);
+        Path basePath = outputDir.resolve(networkPath);
         return PathsEx.resolveIndexed(
-                basePath.resolve(String.format("results_%s.csv", idx))
-        );
+                basePath.resolve(String.format("results_%s.csv", idx)));
     }
-    
+
     /**
      * 1回のシミュレーションを実行する。
      *
-     * @param g                   グラフ
-     * @param config              シミュレーション設定
-     * @param lambdaDirected      有向辺の感染率
-     * @param lambdaNondirected   無向辺の感染率
-     * @param mu                  回復率
-     * @param rho0                初期感染率
-     * @param thresholdList       各ノードの閾値リスト
-     * @param batchIndex          バッチインデックス
-     * @param itr                 イテレーション番号
-     * @param resultsPath         結果出力パス
+     * @param g グラフ
+     * @param config シミュレーション設定
+     * @param lambdaDirected 有向辺の感染率
+     * @param lambdaNondirected 無向辺の感染率
+     * @param mu 回復率
+     * @param rho0 初期感染率
+     * @param thresholdList 各ノードの閾値リスト
+     * @param batchIndex バッチインデックス
+     * @param itr イテレーション番号
+     * @param resultsPath 結果出力パス
      */
     private static void runSimulation(DirectedGraph g, SimulationConfig config,
             double lambdaDirected, double lambdaNondirected, double mu, double rho0, int[] thresholdList,
@@ -187,34 +165,36 @@ public class SAR {
         int[] init = Arrays.copyOfRange(nodes, 0, initialInfectedNum);
 
         long simSeed = SIM_BASE_SEED + (long) batchIndex * config.itrs + itr;
-        
+
         SARResult res = SARSimulator.simulate(
                 g, lambdaDirected, lambdaNondirected, config.mu, config.tMax, thresholdList, init,
-                simSeed
-        );
+                simSeed);
 
         try {
             if (config.isFinal) {
-                res.writeFinalStateCsv(resultsPath, itr, rho0, lambdaDirected, lambdaNondirected, config.mu,
+                res.writeFinalStateCsv(resultsPath, batchIndex * config.itrs + itr, rho0, lambdaDirected,
+                        lambdaNondirected, config.mu,
                         true);
             } else {
-                res.writeTimeSeriesCsv(resultsPath, itr, rho0, lambdaDirected, lambdaNondirected, config.mu,
+                res.writeTimeSeriesCsv(resultsPath, batchIndex * config.itrs + itr, rho0, lambdaDirected,
+                        lambdaNondirected, config.mu,
                         true);
             }
         } catch (IOException e) {
             System.out.println("CSV output error (batch " + batchIndex + ", iteration " + itr + ", lambdaDirected "
-                    + rho0 + ", lambdaDirected " + lambdaDirected + ", lambdaNondirected " + lambdaNondirected + ", mu " + config.mu
+                    + rho0 + ", lambdaDirected " + lambdaDirected + ", lambdaNondirected " + lambdaNondirected + ", mu "
+                    + config.mu
                     + "): " + e.getMessage());
             throw new RuntimeException(e);
         }
     }
-    
+
     /**
      * 進捗表示スレッドを作成する。
      *
-     * @param done       完了タスク数のカウンタ
+     * @param done 完了タスク数のカウンタ
      * @param totalTasks 総タスク数
-     * @param running    実行中フラグ
+     * @param running 実行中フラグ
      * @return 進捗表示スレッド
      */
     private static Thread createTotalProgressRenderer(AtomicLong done, long totalTasks, AtomicBoolean running) {
@@ -252,7 +232,7 @@ public class SAR {
     /**
      * 進捗バーを表示する。
      *
-     * @param done  完了タスク数
+     * @param done 完了タスク数
      * @param total 総タスク数
      */
     private static void renderTotalProgressBar(long done, long total) {
@@ -267,40 +247,45 @@ public class SAR {
         System.out.print("\033[2K\rProgress [%s] %3d%% (%d/%d)".formatted(bar, percent, done, total));
         System.out.flush();
     }
-    
+
     /**
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "DirectedCMOutPow"; // ネットワークタイプ
-        final String path = "valious_T";
-        final int N = 100_000; // 頂点数
+        final String networkType = "BA"; // ネットワークタイプ
+        final String optionPath = "singleSeed";
+        final int N = 1_000_000; // 頂点数
         final int kInMin = 5; // 最小入次数
         final int kInMax = (int) Math.pow(N, 0.5); // 最大入次数
         final int kOutMin = 5; // 最小出次数
         final int kOutMax = (int) Math.pow(N, 0.5); // 最大出次数
         final double kuAve = 0; // 平均次数
+        final int m0 = 5; // 初期完全グラフの頂点数
+        final int m = 5; // 各新規ノードが接続する辺（弧）の数
         final double gamma = 2.5;
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 16; // バッチサイズ
-        final int itrs = 10; // イテレーション数
+        final int itrs = 1000; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
         final double lambdaDirectedMax = 2.0;
         final double lambdaDirectedStep = 0.01;
-        final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        // final double[] lambdaDirectedList = { 0.0 };
+        // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
+        // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
+        final double[] lambdaDirectedList = { 0.0 };
         final double lambdaNonDirectedMin = 0.0;
-        final double lambdaNonDirectedMax = 2.0;
-        final double lambdaNonDirectedStep = 0.04;
-        // final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax, lambdaNonDirectedStep); // 無向辺の感染率
-        final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
+        final double lambdaNonDirectedMax = 0.1;
+        final double lambdaNonDirectedStep = 0.0005;
+        final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax,
+                lambdaNonDirectedStep); // 無向辺の感染率
+        // final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
         final double rho0Min = 0.0;
         final double rho0Max = 0.4;
         final double rho0Step = 0.008;
-        // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); // 初期感染率のリスト
-        final double[] rho0List = { 0.1 }; // 初期感染率のリスト
-        final int threshold = 4; // 閾値
+        // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); //
+        // 初期感染率のリスト
+        final double[] rho0List = { 1.0 / N }; // 初期感染率のリスト
+        final int threshold = 1; // 閾値
     }
 }
