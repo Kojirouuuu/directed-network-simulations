@@ -432,7 +432,7 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 int main(void) {
     int N = 100000;
     EBCMConfig cfg = {
-        .ku = {.mean = 6.0, .min = 5, .max = N, .gamma = 2.5, .type = "Pow"},
+        .ku = {.mean = 6.0, .min = 5, .max = N, .gamma = 3.0, .type = "Pow"},
     };
     double mu = 1.0;
 
@@ -440,7 +440,7 @@ int main(void) {
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_u_min = 0.0;
-    const double lambda_u_max = 0.2;
+    const double lambda_u_max = 0.4;
     const double lambda_u_step = 0.001;
 
     const double rho0_min = 0.0;
