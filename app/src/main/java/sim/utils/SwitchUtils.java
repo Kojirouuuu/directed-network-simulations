@@ -5,6 +5,8 @@ import sim.network.topology.DirectedBA;
 import sim.network.topology.DirectedCM;
 import sim.network.topology.DirectedCMInPow;
 import sim.network.topology.DirectedCMOutPow;
+import sim.network.topology.PowPow;
+import sim.network.topology.SameInOut;
 import sim.network.topology.undirected.ER;
 import sim.network.topology.undirected.BA;
 
@@ -40,24 +42,34 @@ public final class SwitchUtils {
      * 使用されないパラメータは null でよい。ネットワークタイプに応じて必要なものだけ参照される。
      *
      * @param networkType ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-     *        ER, BA, DirectedBA）
+     *        PowPow, SameInOut, ER, BA, DirectedBA）
      * @param N 頂点数
      * @param kuAve DirectedCM 用（null 可）
-     * @param kInMin DirectedCMInPow 用（null 可）
+     * @param kInMin DirectedCMInPow / PowPow 用（null 可）
      * @param kOutMin DirectedCMOutPow 用（null 可）
+     * @param kMax PowPow 用（null 可）
      * @param z ER 用の平均次数（null 可）
      * @param m0 DirectedBA 用（null 可）
      * @param m DirectedBA 用（null 可）
+     * @param gamma PowPow 用（null 可）
+     * @param swapNum PowPow 用（null 可）
      * @return ネットワークパス（例: {networkType}/N={N}/{networkSpecific}/）
      */
     public static Path buildNetworkPath(String networkType, int N,
-            Integer kuAve, Integer kInMin, Integer kOutMin, Double z, Integer m0, Integer m) {
+            Integer kuAve, Integer kInMin, Integer kOutMin, Integer kMax, Double z, Integer m0, Integer m,
+            Double gamma, Integer swapNum) {
         String networkSpecific = switch (networkType) {
             case "DirectedCM" -> String.format("kuAve=%d", requireNonNull(kuAve, "DirectedCM requires kuAve"));
             case "DirectedCMInPow" -> String.format("kInMin=%d",
                     requireNonNull(kInMin, "DirectedCMInPow requires kInMin"));
             case "DirectedCMOutPow" -> String.format("kOutMin=%d",
                     requireNonNull(kOutMin, "DirectedCMOutPow requires kOutMin"));
+            case "PowPow" -> String.format("kMin=%d/kMax=%d/gamma=%.2f/swapNum=%d",
+                    requireNonNull(kInMin, "PowPow requires kMin"), requireNonNull(kMax, "PowPow requires kMax"),
+                    requireNonNull(gamma, "PowPow requires gamma"), requireNonNull(swapNum, "PowPow requires swapNum"));
+            case "SameInOut" -> String.format("kMin=%d/kMax=%d/gamma=%.2f",
+                    requireNonNull(kInMin, "SameInOut requires kMin"), requireNonNull(kMax, "SameInOut requires kMax"),
+                    requireNonNull(gamma, "SameInOut requires gamma"));
             case "ER" -> String.format("z=%.2f", requireNonNull(z, "ER requires z"));
             case "DirectedBA", "BA" -> String.format("m0=%d/m=%d", requireNonNull(m0, "BA requires m0"),
                     requireNonNull(m, "BA requires m"));
@@ -89,14 +101,15 @@ public final class SwitchUtils {
      * @param gamma DirectedCMInPow, DirectedCMOutPow 用
      * @param m0 DirectedBA 用（null 可）
      * @param m DirectedBA 用（null 可）
+     * @param swapNum PowPow 用（null 可、0 として扱う）
      * @param seed 乱数シード
      * @return 生成された DirectedGraph
      */
     public static DirectedGraph generateGraph(String networkType, int N,
             Integer kHat, Integer kInMin, Integer kInMax, Integer kOutMin, Integer kOutMax,
-            double kuAve, double gamma, Integer m0, Integer m, long seed) {
+            double kuAve, double gamma, Integer m0, Integer m, Integer swapNum, long seed) {
         GraphGeneratorParams params = new GraphGeneratorParams(
-                networkType, N, kHat, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, m0, m);
+                networkType, N, kHat, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, m0, m, swapNum);
         return generateGraph(params, seed);
     }
 
@@ -128,6 +141,14 @@ public final class SwitchUtils {
             case "BA" -> BA.generate(name, N,
                     requireNonNull(params.m0(), "BA requires m0"),
                     requireNonNull(params.m(), "BA requires m"), seed);
+            case "PowPow" -> PowPow.generate(name, N,
+                    requireNonNull(params.kInMin(), "PowPow requires kInMin (kMin)"),
+                    requireNonNull(params.kInMax(), "PowPow requires kInMax (kMax)"),
+                    params.gamma(), params.swapNum() != null ? params.swapNum() : 0, seed);
+            case "SameInOut" -> SameInOut.generate(name, N,
+                    requireNonNull(params.kInMin(), "SameInOut requires kMin"),
+                    requireNonNull(params.kInMax(), "SameInOut requires kMax"),
+                    params.gamma(), seed);
             default -> throw new IllegalArgumentException("Unknown network type: " + params.networkType());
         };
     }
@@ -147,29 +168,38 @@ public final class SwitchUtils {
             double kuAve,
             double gamma,
             Integer m0,
-            Integer m) {
+            Integer m,
+            Integer swapNum) {
         public static GraphGeneratorParams forDirectedCM(int N, int kHat) {
-            return new GraphGeneratorParams("DirectedCM", N, kHat, null, null, null, null, 0, 0, null, null);
+            return new GraphGeneratorParams("DirectedCM", N, kHat, null, null, null, null, 0, 0, null, null, null);
         }
 
         public static GraphGeneratorParams forDirectedCMInPow(int N, int kInMin, int kInMax, double kuAve,
                 double gamma) {
             return new GraphGeneratorParams("DirectedCMInPow", N, null, kInMin, kInMax, null, null, kuAve, gamma, null,
-                    null);
+                    null, null);
         }
 
         public static GraphGeneratorParams forDirectedCMOutPow(int N, int kOutMin, int kOutMax, double kuAve,
                 double gamma) {
             return new GraphGeneratorParams("DirectedCMOutPow", N, null, null, null, kOutMin, kOutMax, kuAve, gamma,
-                    null, null);
+                    null, null, null);
+        }
+
+        public static GraphGeneratorParams forPowPow(int N, int kMin, int kMax, double gamma, int swapNum) {
+            return new GraphGeneratorParams("PowPow", N, null, kMin, kMax, null, null, 0, gamma, null, null, swapNum);
+        }
+
+        public static GraphGeneratorParams forSameInOut(int N, int kMin, int kMax, double gamma) {
+            return new GraphGeneratorParams("SameInOut", N, null, kMin, kMax, null, null, 0, gamma, null, null, null);
         }
 
         public static GraphGeneratorParams forER(int N, double kuAve) {
-            return new GraphGeneratorParams("ER", N, null, null, null, null, null, kuAve, 0, null, null);
+            return new GraphGeneratorParams("ER", N, null, null, null, null, null, kuAve, 0, null, null, null);
         }
 
         public static GraphGeneratorParams forBA(int N, int m0, int m) {
-            return new GraphGeneratorParams("BA", N, null, null, null, null, null, 0, 0, m0, m);
+            return new GraphGeneratorParams("BA", N, null, null, null, null, null, 0, 0, m0, m, null);
         }
     }
 

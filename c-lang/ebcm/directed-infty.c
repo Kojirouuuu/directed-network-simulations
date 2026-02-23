@@ -95,9 +95,6 @@ typedef struct {
 
 /* 分布タイプに応じた実効的な最大次数（ループ範囲に使う） */
 static int get_effective_degree_max(const char *type, double mean, int max) {
-    if (strcmp(type, "Pow") == 0) {
-        return (int)(pow((double)max, 0.5));
-    }
     if (strcmp(type, "Poi") == 0) {
         return (int)(mean + 3.0 * sqrt(mean));
     }
@@ -423,22 +420,22 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 #define MAX_GD_ROOTS 32
 
 int main(void) {
-    int N = 100000;
     EBCMConfig cfg = {
-        .ki = {.mean = 12.0, .min = 0, .max = N, .gamma = 2.5, .type = "Poi"},
+        // .ki = {.mean = 12.0, .min = 5, .max = 500000, .gamma = 2.5, .type = "Pow"},
+        .ki = {.mean = 12.0, .min = 5, .max = 500000, .gamma = 2.5, .type = "Pow"},
     };
     double mu = 1.0;
 
-    const int T_list[] = {1, 2, 3, 4};
+    const int T_list[] = {3};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
-    const double lambda_d_max = 2.0;
-    const double lambda_d_step = 0.01;
+    const double lambda_d_max = 3.0;
+    const double lambda_d_step = 0.001;
 
     const double rho0_min = 0.0;
-    const double rho0_max = 0.4;
-    const double rho0_step = 0.002;
+    const double rho0_max = 0.1;
+    const double rho0_step = 0.01;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 
@@ -460,9 +457,25 @@ int main(void) {
     const int progress_width = 100;
     char dirbuf[256];
     char pathbuf[256];
-    snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/%s", cfg.ki.type);
-    mkdir("out/ebcm/directed-infty", 0755); /* 親が無いと子が作れない */
-    mkdir(dirbuf, 0755);
+    mkdir("out/ebcm/directed-infty", 0755);
+    if (strcmp(cfg.ki.type, "Pow") == 0) {
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/Pow/gamma=%.2f/kmin=%d/kmax=%d",
+                 cfg.ki.gamma, D->ki_min, D->ki_max);
+        mkdir("out/ebcm/directed-infty/Pow", 0755);
+        char subdir[256];
+        snprintf(subdir, sizeof subdir, "out/ebcm/directed-infty/Pow/gamma=%.2f", cfg.ki.gamma);
+        mkdir(subdir, 0755);
+        snprintf(subdir, sizeof subdir, "out/ebcm/directed-infty/Pow/gamma=%.2f/kmin=%d",
+                 cfg.ki.gamma, D->ki_min);
+        mkdir(subdir, 0755);
+        mkdir(dirbuf, 0755);
+    } else if (strcmp(cfg.ki.type, "Poi") == 0) {
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/kave=%.2f", D->mean_ki);
+        mkdir(dirbuf, 0755);
+    } else {
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/%s", cfg.ki.type);
+        mkdir(dirbuf, 0755);
+    }
 
     snprintf(pathbuf, sizeof pathbuf, "%s/gd_zero.csv", dirbuf);
     FILE *fp_gd = fopen(pathbuf, "w");

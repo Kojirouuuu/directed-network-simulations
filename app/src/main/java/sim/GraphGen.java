@@ -1,7 +1,8 @@
 package sim;
 
 import sim.network.DirectedGraph;
-import sim.network.topology.undirected.BA;
+import sim.network.topology.PowPow;
+import sim.network.topology.SameInOut;
 import sim.utils.SwitchUtils;
 
 import java.io.IOException;
@@ -10,15 +11,16 @@ import java.nio.file.Paths;
 
 public class GraphGen {
     public static void main(String[] args) {
-        int n = 1_000_000;
-        int m0 = 6;
-        int m = 5;
-        int itrs = 10;
+        int n = 500_000;
+        int kMin = 5;
+        int kMax = n;
+        double gamma = 2.5;
+        int itrs = 20;
 
         for (int itr = 0; itr < itrs; itr++) {
 
             long seed = 1234567890 + itr * 100;
-            DirectedGraph g = BA.generate("BA", n, m0, m, seed);
+            DirectedGraph g = SameInOut.generate("SameInOut", n, kMin, kMax, gamma, seed);
             System.out.println("");
             System.out.println("--------------------------------");
             g.printInfo();
@@ -26,7 +28,8 @@ public class GraphGen {
             System.out.println("");
 
             // パス構成: out/edgelist/{NetworkPath}/{filename}
-            Path networkPath = SwitchUtils.buildNetworkPath("BA", n, null, null, null, null, m0, m);
+            Path networkPath = SwitchUtils.buildNetworkPath("SameInOut", n, null, kMin, null, kMax, null, null, null,
+                    gamma, null);
             Path outputDir = Paths.get("out/edgelist").resolve(networkPath);
             String fileName = String.format("%s_%d.csv", g.name, itr);
             Path outputPath = outputDir.resolve(fileName);

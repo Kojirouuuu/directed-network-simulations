@@ -467,9 +467,25 @@ int main(void) {
     const int progress_width = 100;
     char dirbuf[256];
     char pathbuf[256];
-    snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/%s", cfg.ku.type);
-    mkdir("out/ebcm/undirected-infty", 0755); /* 親が無いと子が作れない */
-    mkdir(dirbuf, 0755);
+    mkdir("out/ebcm/undirected-infty", 0755);
+    if (strcmp(cfg.ku.type, "Pow") == 0) {
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/Pow/gamma=%.2f/kmin=%d/kmax=%d",
+                 cfg.ku.gamma, D->ku_min, D->ku_max);
+        mkdir("out/ebcm/undirected-infty/Pow", 0755);
+        char subdir[256];
+        snprintf(subdir, sizeof subdir, "out/ebcm/undirected-infty/Pow/gamma=%.2f", cfg.ku.gamma);
+        mkdir(subdir, 0755);
+        snprintf(subdir, sizeof subdir, "out/ebcm/undirected-infty/Pow/gamma=%.2f/kmin=%d",
+                 cfg.ku.gamma, D->ku_min);
+        mkdir(subdir, 0755);
+        mkdir(dirbuf, 0755);
+    } else if (strcmp(cfg.ku.type, "Poi") == 0) {
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/kave=%.2f", D->mean_ku);
+        mkdir(dirbuf, 0755);
+    } else {
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/%s", cfg.ku.type);
+        mkdir(dirbuf, 0755);
+    }
 
     snprintf(pathbuf, sizeof pathbuf, "%s/gu_zero.csv", dirbuf);
     FILE *fp_gu = fopen(pathbuf, "w");

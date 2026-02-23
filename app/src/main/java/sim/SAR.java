@@ -85,7 +85,7 @@ public class SAR {
             int[] progressItr, AtomicLong done, long totalTasks) {
         DirectedGraph g = SwitchUtils.generateGraph(config.networkType, config.N,
                 null, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
-                config.kuAve, config.gamma, config.m0, config.m, GRAPH_BASE_SEED + batchIndex);
+                config.kuAve, config.gamma, config.m0, config.m, config.swapNum, GRAPH_BASE_SEED + batchIndex);
 
         Path resultsPath = prepareOutputPath(g, batchIndex, config);
 
@@ -127,7 +127,8 @@ public class SAR {
         Path outputDir = SwitchUtils.buildSimulationOutputDir(config.optionPath, config.threshold);
         Path networkPath = SwitchUtils.buildNetworkPath(
                 config.networkType, config.N,
-                null, config.kInMin, config.kOutMin, null, config.m0, config.m);
+                null, config.kInMin, config.kOutMin, config.kInMax, null, config.m0, config.m,
+                config.gamma, config.swapNum);
         Path basePath = outputDir.resolve(networkPath);
         return PathsEx.resolveIndexed(
                 basePath.resolve(String.format("results_%s.csv", idx)));
@@ -252,40 +253,44 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "BA"; // ネットワークタイプ
-        final String optionPath = "singleSeed";
-        final int N = 1_000_000; // 頂点数
+        final String networkType = "PowPow"; // ネットワークタイプ
+        final String optionPath = "check-sim2";
+        final int N = 500_000; // 頂点数
         final int kInMin = 5; // 最小入次数
-        final int kInMax = (int) Math.pow(N, 0.5); // 最大入次数
+        // final int kInMax = (int) Math.pow(N, 0.5); // 最大入次数
+        final int kInMax = N; // 最大入次数
         final int kOutMin = 5; // 最小出次数
-        final int kOutMax = (int) Math.pow(N, 0.5); // 最大出次数
+        // final int kOutMax = (int) Math.pow(N, 0.5); // 最大出次数
+        final int kOutMax = N; // 最大出次数
         final double kuAve = 0; // 平均次数
         final int m0 = 5; // 初期完全グラフの頂点数
         final int m = 5; // 各新規ノードが接続する辺（弧）の数
         final double gamma = 2.5;
+
+        final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 16; // バッチサイズ
-        final int itrs = 1000; // イテレーション数
+        final int itrs = 20; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 2.0;
-        final double lambdaDirectedStep = 0.01;
-        // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
-        // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        final double[] lambdaDirectedList = { 0.0 };
+        final double lambdaDirectedMax = 3.0;
+        final double lambdaDirectedStep = 0.06;
+        final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
+        // final double[] lambdaDirectedList = { 2.0 };
         final double lambdaNonDirectedMin = 0.0;
         final double lambdaNonDirectedMax = 0.1;
         final double lambdaNonDirectedStep = 0.0005;
-        final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax,
-                lambdaNonDirectedStep); // 無向辺の感染率
-        // final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
+        // final double[] lambdaNondirectedList =
+        // ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax,
+        // lambdaNonDirectedStep); // 無向辺の感染率
+        final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
         final double rho0Min = 0.0;
-        final double rho0Max = 0.4;
-        final double rho0Step = 0.008;
+        final double rho0Max = 0.1;
+        final double rho0Step = 0.001;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); //
         // 初期感染率のリスト
-        final double[] rho0List = { 1.0 / N }; // 初期感染率のリスト
-        final int threshold = 1; // 閾値
+        final double[] rho0List = { 0.03 }; // 初期感染率のリスト
+        final int threshold = 3; // 閾値
     }
 }
