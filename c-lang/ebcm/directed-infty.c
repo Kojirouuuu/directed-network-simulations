@@ -422,7 +422,7 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 int main(void) {
     EBCMConfig cfg = {
         // .ki = {.mean = 12.0, .min = 5, .max = 500000, .gamma = 2.5, .type = "Pow"},
-        .ki = {.mean = 12.0, .min = 5, .max = 500000, .gamma = 2.5, .type = "Pow"},
+        .ki = {.mean = 12.0, .min = 3, .max = 707, .gamma = 2.5, .type = "Pow"},
     };
     double mu = 1.0;
 
@@ -430,12 +430,12 @@ int main(void) {
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
-    const double lambda_d_max = 3.0;
-    const double lambda_d_step = 0.001;
+    const double lambda_d_max = 10.0;
+    const double lambda_d_step = 0.01;
 
     const double rho0_min = 0.0;
-    const double rho0_max = 0.1;
-    const double rho0_step = 0.01;
+    const double rho0_max = 0.2;
+    const double rho0_step = 0.005;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 

@@ -1,7 +1,6 @@
 package sim;
 
 import sim.network.DirectedGraph;
-import sim.network.topology.PowPow;
 import sim.network.topology.SameInOut;
 import sim.utils.SwitchUtils;
 
@@ -28,7 +27,9 @@ public class GraphGen {
             System.out.println("");
 
             // パス構成: out/edgelist/{NetworkPath}/{filename}
-            Path networkPath = SwitchUtils.buildNetworkPath("SameInOut", n, null, kMin, null, kMax, null, null, null,
+            Path networkPath = SwitchUtils.buildNetworkPath("SameInOut", n,
+                    null, null, null, null, null, null,
+                    kMin, kMax, null, null,
                     gamma, null);
             Path outputDir = Paths.get("out/edgelist").resolve(networkPath);
             String fileName = String.format("%s_%d.csv", g.name, itr);

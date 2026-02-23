@@ -84,7 +84,7 @@ public class SAR {
     private static void processBatch(int batchIndex, SimulationConfig config,
             int[] progressItr, AtomicLong done, long totalTasks) {
         DirectedGraph g = SwitchUtils.generateGraph(config.networkType, config.N,
-                null, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
                 config.kuAve, config.gamma, config.m0, config.m, config.swapNum, GRAPH_BASE_SEED + batchIndex);
 
         Path resultsPath = prepareOutputPath(g, batchIndex, config);
@@ -127,7 +127,8 @@ public class SAR {
         Path outputDir = SwitchUtils.buildSimulationOutputDir(config.optionPath, config.threshold);
         Path networkPath = SwitchUtils.buildNetworkPath(
                 config.networkType, config.N,
-                null, config.kInMin, config.kOutMin, config.kInMax, null, config.m0, config.m,
+                null, null, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                config.kdMin, config.kdMax, config.m0, config.m,
                 config.gamma, config.swapNum);
         Path basePath = outputDir.resolve(networkPath);
         return PathsEx.resolveIndexed(
@@ -256,12 +257,14 @@ public class SAR {
         final String networkType = "PowPow"; // ネットワークタイプ
         final String optionPath = "check-sim2";
         final int N = 500_000; // 頂点数
+        final int kdMin = 5; // 最小次数
+        final int kdMax = (int) Math.pow(N, 0.5); // 最大次数
         final int kInMin = 5; // 最小入次数
-        // final int kInMax = (int) Math.pow(N, 0.5); // 最大入次数
-        final int kInMax = N; // 最大入次数
+        final int kInMax = (int) Math.pow(N, 0.5); // 最大入次数
+        // final int kInMax = N; // 最大入次数
         final int kOutMin = 5; // 最小出次数
-        // final int kOutMax = (int) Math.pow(N, 0.5); // 最大出次数
-        final int kOutMax = N; // 最大出次数
+        final int kOutMax = (int) Math.pow(N, 0.5); // 最大出次数
+        // final int kOutMax = N; // 最大出次数
         final double kuAve = 0; // 平均次数
         final int m0 = 5; // 初期完全グラフの頂点数
         final int m = 5; // 各新規ノードが接続する辺（弧）の数

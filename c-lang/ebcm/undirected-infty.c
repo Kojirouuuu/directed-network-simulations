@@ -95,9 +95,6 @@ typedef struct {
 
 /* 分布タイプに応じた実効的な最大次数（ループ範囲に使う） */
 static int get_effective_degree_max(const char *type, double mean, int max) {
-    if (strcmp(type, "Pow") == 0) {
-        return (int)(pow((double)max, 0.5));
-    }
     if (strcmp(type, "Poi") == 0) {
         return (int)(mean + 3.0 * sqrt(mean));
     }
@@ -156,23 +153,22 @@ static double *build_binom(int kmax) {
     return Binom;
 }
 
-static double Theta_u(const double *Binom, int ku_minus_1, int kmax, int T, double theta_u) {
+static double Theta_u(const double *Binom, int ku, int kmax, int T, double theta_u) {
     if (theta_u == 1.0) {
         return 1.0;
     }
     if (T == 1) {
-        return pow(theta_u, (double)ku_minus_1);
+        return pow(theta_u, (double)ku);
     }
-    if (ku_minus_1 == 0) {
+    if (ku == 0) {
         return 1.0;
     }
-    int md_max = (ku_minus_1 < T - 1) ? ku_minus_1 : T - 1;
+    int md_max = (ku < T - 1) ? ku : T - 1;
     double sum = 0.0;
     double q = 1.0 - theta_u;
 
     for (int md = 0; md <= md_max; md++) {
-        sum += Binom[ku_minus_1 * (kmax + 1) + md] * pow(theta_u, (double)(ku_minus_1 - md)) *
-               pow(q, (double)md);
+        sum += Binom[ku * (kmax + 1) + md] * pow(theta_u, (double)(ku - md)) * pow(q, (double)md);
     }
     return sum;
 }
@@ -296,10 +292,22 @@ static double xiS_undirected_prime_prime(const DegreeDist *D, const DynamicsConf
     return (1.0 - p->rho0) * s / (double)D->mean_ku;
 }
 
-/* 感受性ノードの割合 S(t) = (1-ρ0) Σ k*P(k)/⟨k⟩ * Theta_u */
+/* 感受性ノードの割合 S(t) = (1-ρ0) Σ P(k) * Theta_u */
 static double compute_S(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
                         double theta_u) {
-    return xiS_undirected(D, p, Binom, theta_u);
+    double s = 0.0;
+
+    for (int k = D->ku_min; k <= D->ku_max; k++) {
+        if (k == 0) {
+            continue;
+        }
+        double pk = D->Pu[k];
+        if (pk == 0.0)
+            continue;
+        double phi_u = Theta_u(Binom, k, D->ku_max, p->T, theta_u);
+        s += (double)pk * phi_u;
+    }
+    return (1.0 - p->rho0) * s;
 }
 
 static double rhs_Phi(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
@@ -430,22 +438,21 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 #define MAX_GD_ROOTS 32
 
 int main(void) {
-    int N = 100000;
     EBCMConfig cfg = {
-        .ku = {.mean = 6.0, .min = 5, .max = N, .gamma = 3.0, .type = "Pow"},
+        .ku = {.mean = 6.0, .min = 5, .max = 707, .gamma = 4.0, .type = "Pow"},
     };
     double mu = 1.0;
 
-    const int T_list[] = {1, 2, 3, 4};
+    const int T_list[] = {3};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_u_min = 0.0;
-    const double lambda_u_max = 0.4;
-    const double lambda_u_step = 0.001;
+    const double lambda_u_max = 1.0;
+    const double lambda_u_step = 0.01;
 
-    const double rho0_min = 0.0;
-    const double rho0_max = 0.4;
-    const double rho0_step = 0.002;
+    const double rho0_min = 0.1;
+    const double rho0_max = 0.1;
+    const double rho0_step = 0.01;
 
     const double theta_search_step = 0.005; /* g_u=0 の根探索の刻み */
 

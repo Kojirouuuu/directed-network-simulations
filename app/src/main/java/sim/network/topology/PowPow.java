@@ -83,25 +83,25 @@ public final class PowPow {
      *
      * @param name グラフ名
      * @param n 頂点数
-     * @param kMin 最小次数 (≥ 1)
-     * @param kMax 最大次数 (≥ kMin)
+     * @param kdMin 最小次数 (≥ 1)
+     * @param kdMax 最大次数 (≥ kdMin)
      * @param gamma べき則指数 (> 1.0)
      * @param swapNum スワップ回数。正: 正相関（swapNum 回）、負: 負相関（|swapNum| 回）、0: 無相関
      * @param seed 乱数シード
      * @return 生成された DirectedGraph
      */
     public static DirectedGraph generate(
-            String name, int n, int kMin, int kMax,
+            String name, int n, int kdMin, int kdMax,
             double gamma, int swapNum, long seed) {
 
-        validateGenerateParams(name, n, kMin, kMax, gamma, swapNum);
+        validateGenerateParams(name, n, kdMin, kdMax, gamma, swapNum);
 
         // ① べき則からそれぞれ独立にサンプリング
-        int[] ko = samplePowerLawDistribution(n, kMin, kMax, gamma, seed);
-        int[] ki = samplePowerLawDistribution(n, kMin, kMax, gamma, seed ^ SEED_MIX_DIRECTED);
+        int[] ko = samplePowerLawDistribution(n, kdMin, kdMax, gamma, seed);
+        int[] ki = samplePowerLawDistribution(n, kdMin, kdMax, gamma, seed ^ SEED_MIX_DIRECTED);
 
         // ② Σko = Σki を保証する（コンフィギュレーションモデルの必要条件）
-        balanceSums(ko, ki, kMin, kMax, seed ^ SEED_MIX_BALANCE);
+        balanceSums(ko, ki, kdMin, kdMax, seed ^ SEED_MIX_BALANCE);
 
         // ③ スワップで同一ノードの ko と ki に相関を注入する
         if (swapNum != 0) {
@@ -145,15 +145,15 @@ public final class PowPow {
     }
 
     private static void validateGenerateParams(
-            String name, int n, int kMin, int kMax, double gamma, int swapNum) {
+            String name, int n, int kdMin, int kdMax, double gamma, int swapNum) {
         if (name == null)
             throw new IllegalArgumentException("name must be non-null");
         if (n < 1)
             throw new IllegalArgumentException("n must be >= 1");
-        if (kMin < 1)
-            throw new IllegalArgumentException("kMin must be >= 1");
-        if (kMax < kMin)
-            throw new IllegalArgumentException("kMax must be >= kMin");
+        if (kdMin < 1)
+            throw new IllegalArgumentException("kdMin must be >= 1");
+        if (kdMax < kdMin)
+            throw new IllegalArgumentException("kdMax must be >= kdMin");
         if (gamma <= 1.0)
             throw new IllegalArgumentException("gamma must be > 1.0");
     }
@@ -173,26 +173,26 @@ public final class PowPow {
      * べき則分布 P(k) ∝ k^{-gamma} に従う次数列をサンプリングする。
      */
     private static int[] samplePowerLawDistribution(
-            int n, int kMin, int kMax, double gamma, long seed) {
+            int n, int kdMin, int kdMax, double gamma, long seed) {
         Random rng = new Random(seed);
-        double[] cdf = buildPowerLawCdf(kMin, kMax, gamma);
+        double[] cdf = buildPowerLawCdf(kdMin, kdMax, gamma);
         int[] k = new int[n];
         for (int u = 0; u < n; u++) {
             double r = rng.nextDouble();
             int idx = Arrays.binarySearch(cdf, r);
             // binarySearch が負の場合: -(insertion point) - 1 → insertion point = -idx - 1
-            k[u] = (idx >= 0 ? idx : -idx - 1) + kMin;
+            k[u] = (idx >= 0 ? idx : -idx - 1) + kdMin;
         }
         return k;
     }
 
-    private static double[] buildPowerLawCdf(int kMin, int kMax, double gamma) {
-        int len = kMax - kMin + 1;
+    private static double[] buildPowerLawCdf(int kdMin, int kdMax, double gamma) {
+        int len = kdMax - kdMin + 1;
         double[] cdf = new double[len];
         double s = 0.0;
-        for (int k = kMin; k <= kMax; k++) {
+        for (int k = kdMin; k <= kdMax; k++) {
             s += Math.pow(k, -gamma);
-            cdf[k - kMin] = s;
+            cdf[k - kdMin] = s;
         }
         for (int i = 0; i < len; i++) {
             cdf[i] /= s;
@@ -205,7 +205,7 @@ public final class PowPow {
      * Σko = Σki となるよう ki を ±1 ずつ調整する。
      * 次数分布の形状をできるだけ保つため、1 回の調整は 1 ずつとする。
      */
-    private static void balanceSums(int[] ko, int[] ki, int kMin, int kMax, long seed) {
+    private static void balanceSums(int[] ko, int[] ki, int kdMin, int kdMax, long seed) {
         Random rng = new Random(seed);
         int n = ki.length;
         long sumKo = sum(ko);
@@ -214,7 +214,7 @@ public final class PowPow {
         // ki が不足 → ランダムなノードに +1
         while (sumKi < sumKo) {
             int idx = rng.nextInt(n);
-            if (ki[idx] < kMax) {
+            if (ki[idx] < kdMax) {
                 ki[idx]++;
                 sumKi++;
             }
@@ -222,7 +222,7 @@ public final class PowPow {
         // ki が過剰 → 次数 > 0 のランダムなノードから -1
         while (sumKi > sumKo) {
             int idx = rng.nextInt(n);
-            if (ki[idx] > kMin) {
+            if (ki[idx] > kdMin) {
                 ki[idx]--;
                 sumKi--;
             }
