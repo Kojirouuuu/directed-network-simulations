@@ -270,7 +270,7 @@ public class SAR {
         final int m = 5; // 各新規ノードが接続する辺（弧）の数
         final double gamma = 2.5;
 
-        final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
+        final int swapNum = 100000; // PowPow 用（null のとき 0 として扱う）
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 16; // バッチサイズ
         final int itrs = 20; // イテレーション数

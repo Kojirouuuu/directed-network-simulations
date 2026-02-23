@@ -260,11 +260,28 @@ public final class PowPow {
         int n = ko.length;
         int nTrials = Math.abs(swapNum);
         boolean positive = (swapNum > 0);
+
+        final int mDir = (int) sum(ko); // Σko = Σki が保証済み
+
         Random rng = new Random(seed);
 
         for (int t = 0; t < nTrials; t++) {
-            int i = rng.nextInt(n);
-            int j = rng.nextInt(n);
+            int[] outStubs = new int[mDir];
+            int[] inStubs = new int[mDir];
+            int pOut = 0, pIn = 0;
+            for (int u = 0; u < n; u++) {
+                for (int tt = 0; tt < ko[u]; tt++)
+                    outStubs[pOut++] = u;
+                for (int tt = 0; tt < ki[u]; tt++)
+                    inStubs[pIn++] = u;
+            }
+            if (pOut != mDir || pIn != mDir) {
+                throw new IllegalStateException(
+                        "Directed stub count mismatch: pOut=" + pOut + ", pIn=" + pIn + ", mDir=" + mDir);
+            }
+
+            int i = outStubs[rng.nextInt(mDir)];
+            int j = outStubs[rng.nextInt(mDir)];
             if (i == j)
                 continue;
 
