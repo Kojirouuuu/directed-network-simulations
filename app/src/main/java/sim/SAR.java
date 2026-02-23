@@ -281,16 +281,16 @@ public class SAR {
         final double lambdaDirectedStep = 0.06;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
         // final double[] lambdaDirectedList = { 2.0 };
-        final double lambdaNonDirectedMin = 0.0;
-        final double lambdaNonDirectedMax = 0.1;
-        final double lambdaNonDirectedStep = 0.0005;
+        // final double lambdaNonDirectedMin = 0.0;
+        // final double lambdaNonDirectedMax = 0.1;
+        // final double lambdaNonDirectedStep = 0.0005;
         // final double[] lambdaNondirectedList =
         // ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax,
         // lambdaNonDirectedStep); // 無向辺の感染率
         final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
-        final double rho0Min = 0.0;
-        final double rho0Max = 0.1;
-        final double rho0Step = 0.001;
+        // final double rho0Min = 0.0;
+        // final double rho0Max = 0.1;
+        // final double rho0Step = 0.001;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); //
         // 初期感染率のリスト
         final double[] rho0List = { 0.03 }; // 初期感染率のリスト

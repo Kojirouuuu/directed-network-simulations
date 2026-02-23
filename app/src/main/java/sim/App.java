@@ -3,77 +3,8 @@
  */
 package sim;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import sim.network.topology.DirectedCM;
-import sim.network.topology.DirectedCMOutPow;
-import sim.network.DirectedGraph;
-
 public class App {
     public static void main(String[] args) {
-        int n = 100_000;
-        int kOutMin = 5;
-        int kOutMax = n - 1;
-        int kuAve = 0;
-        double gamma = 2.43;
-        int itrs = 1000;
-        int[] directedConnectedSizes = new int[itrs];
-        int[] undirectedConnectedSizes = new int[itrs];
-
-        for (int itr = 0; itr < itrs; itr++) {
-            System.out.println("Iteration " + itr);
-            long seed = 1234567890 + itr * 100;
-            DirectedGraph g = DirectedCMOutPow.generate("DirectedCMOutPow", n, kOutMin, kOutMax, kuAve, gamma, seed);
-            g.printInfo();
-
-            directedConnectedSizes[itr] = g.checkConnected(false);
-            undirectedConnectedSizes[itr] = g.checkConnected(true);
-        }
-
-        String outputDir = String.format("out/connected_sizes/n=%d/", n);
-
-        // try {
-        //     writeConnectedSizesCsv(Path.of(outputDir + "directed_connected_sizes.csv"), directedConnectedSizes);
-        //     writeConnectedSizesCsv(Path.of(outputDir + "undirected_connected_sizes.csv"), undirectedConnectedSizes);
-        // } catch (IOException e) {
-        //     System.err.println("CSV出力エラー: " + e.getMessage());
-        //     e.printStackTrace();
-        // }
-
-        System.out.println("All connected");
-    }
-
-    /**
-     * 連結成分サイズの2次元配列をCSVファイルに書き出す。
-     * 形式: 行がitr。ヘッダー行にitrを含む。
-     *
-     * @param path 出力先のファイルパス
-     * @param connectedSizes 連結成分サイズの2次元配列 [itr][kHatIndex]
-     * @throws IOException ファイル書き込みエラー
-     */
-    private static void writeConnectedSizesCsv(Path path, int[] connectedSizes) throws IOException {
-        Path parent = path.getParent();
-        if (parent != null) {
-            Files.createDirectories(parent);
-        }
-        try (BufferedWriter bw = Files.newBufferedWriter(path, StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING);
-                PrintWriter out = new PrintWriter(bw)) {
-            // ヘッダー行: itr
-            out.print("itr");
-            out.println();
-
-            // データ行
-            for (int itr = 0; itr < connectedSizes.length; itr++) {
-                out.print(itr);
-                out.print(",");
-                out.print(connectedSizes[itr]);
-                out.println();
-            }
-        }
+        System.out.println("Hello, World!");
     }
 }
