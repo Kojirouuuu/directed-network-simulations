@@ -474,6 +474,8 @@ int main(void) {
     const int progress_width = 100;
     char dirbuf[256];
     char pathbuf[256];
+    mkdir("out", 0755);
+    mkdir("out/ebcm", 0755);
     mkdir("out/ebcm/undirected-infty", 0755);
     if (strcmp(cfg.ku.type, "Pow") == 0) {
         snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/Pow/gamma=%.2f/kmin=%d/kmax=%d",

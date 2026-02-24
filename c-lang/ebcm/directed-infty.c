@@ -422,7 +422,7 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 int main(void) {
     EBCMConfig cfg = {
         // .ki = {.mean = 12.0, .min = 5, .max = 500000, .gamma = 2.5, .type = "Pow"},
-        .ki = {.mean = 12.0, .min = 3, .max = 707, .gamma = 2.5, .type = "Pow"},
+        .ki = {.mean = 12.0, .min = 5, .max = 707, .gamma = 2.5, .type = "Pow"},
     };
     double mu = 1.0;
 
@@ -430,12 +430,12 @@ int main(void) {
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
-    const double lambda_d_max = 10.0;
-    const double lambda_d_step = 0.01;
+    const double lambda_d_max = 4.0;
+    const double lambda_d_step = 0.004;
 
     const double rho0_min = 0.0;
-    const double rho0_max = 0.2;
-    const double rho0_step = 0.005;
+    const double rho0_max = 0.4;
+    const double rho0_step = 0.0004;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 
@@ -457,6 +457,8 @@ int main(void) {
     const int progress_width = 100;
     char dirbuf[256];
     char pathbuf[256];
+    mkdir("out", 0755);
+    mkdir("out/ebcm", 0755);
     mkdir("out/ebcm/directed-infty", 0755);
     if (strcmp(cfg.ki.type, "Pow") == 0) {
         snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/Pow/gamma=%.2f/kmin=%d/kmax=%d",
@@ -470,7 +472,8 @@ int main(void) {
         mkdir(subdir, 0755);
         mkdir(dirbuf, 0755);
     } else if (strcmp(cfg.ki.type, "Poi") == 0) {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/kave=%.2f", D->mean_ki);
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/Poi/kuave=%.2f", D->mean_ki);
+        mkdir("out/ebcm/directed-infty/Poi", 0755);
         mkdir(dirbuf, 0755);
     } else {
         snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/%s", cfg.ki.type);
@@ -615,7 +618,7 @@ int main(void) {
             double root = roots_prime[r];
             double delta = fabs(root - valid_theta_d);
             double g_d_check = g_d(D, &dynamics, Binom, root);
-            if (root <= 1.0 && root >= 0.0 && delta < delta_min && fabs(g_d_check) < 1e-3) {
+            if (root <= 1.0 && root >= 0.0 && delta < delta_min && fabs(g_d_check) < 1e-4) {
                 prime_found = true;
                 delta_min = delta;
             }
@@ -630,7 +633,7 @@ int main(void) {
                 double g_d_check = g_d(D, &dynamics, Binom, root);
                 double g_d_prime_check = g_d_prime(D, &dynamics, Binom, root);
                 if (root <= 1.0 && root >= 0.0 && delta < delta_min_prime_prime &&
-                    fabs(g_d_prime_check) < 1e-2 * 4 && fabs(g_d_check) < 1e-2 * 4) {
+                    fabs(g_d_prime_check) < 1e-2 && fabs(g_d_check) < 1e-2) {
                     prime_prime_found = true;
                     delta_min_prime_prime = delta;
                 }
