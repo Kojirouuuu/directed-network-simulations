@@ -127,7 +127,8 @@ public class SAR {
         Path outputDir = SwitchUtils.buildSimulationOutputDir(config.optionPath, config.threshold);
         Path networkPath = SwitchUtils.buildNetworkPath(
                 config.networkType, g.n,
-                null, null, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                null, config.kuAve,
+                config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
                 config.kdMin, config.kdMax, config.m0, config.m,
                 config.gamma, config.swapNum);
         Path basePath = outputDir.resolve(networkPath);
@@ -265,9 +266,9 @@ public class SAR {
         final int kOutMin = 5; // 最小出次数
         final int kOutMax = (int) Math.pow(N, 0.5); // 最大出次数
         // final int kOutMax = N; // 最大出次数
-        final double kuAve = 0; // 平均次数
-        final int m0 = 5; // 初期完全グラフの頂点数
-        final int m = 5; // 各新規ノードが接続する辺（弧）の数
+        final double kuAve = 12; // 平均次数
+        final int m0 = 6; // 初期完全グラフの頂点数
+        final int m = 6; // 各新規ノードが接続する辺（弧）の数
         final double gamma = 2.5;
 
         final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
@@ -280,20 +281,13 @@ public class SAR {
         final double lambdaDirectedMax = 4.0;
         final double lambdaDirectedStep = 0.1;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        // final double[] lambdaDirectedList = { 2.0 };
-        // final double lambdaNonDirectedMin = 0.0;
-        // final double lambdaNonDirectedMax = 0.1;
-        // final double lambdaNonDirectedStep = 0.0005;
-        // final double[] lambdaNondirectedList =
-        // ArrayUtils.arange(lambdaNonDirectedMin, lambdaNonDirectedMax,
-        // lambdaNonDirectedStep); // 無向辺の感染率
         final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
         // final double rho0Min = 0.0;
         // final double rho0Max = 0.1;
         // final double rho0Step = 0.001;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); //
         // 初期感染率のリスト
-        final double[] rho0List = { 0.03 }; // 初期感染率のリスト
+        final double[] rho0List = { 0.1 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
     }
 }
