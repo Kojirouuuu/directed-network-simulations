@@ -99,7 +99,7 @@ public class SAR {
                     for (int lni = 0; lni < config.lambdaNondirectedList.length; lni++) {
                         double lambdaNondirected = config.lambdaNondirectedList[lni];
 
-                        int[] thresholdList = new int[config.N];
+                        int[] thresholdList = new int[g.n];
                         Arrays.fill(thresholdList, config.threshold);
 
                         runSimulation(g, config, lambdaDirected, lambdaNondirected, config.mu, rho0,
@@ -126,7 +126,7 @@ public class SAR {
         String idx = String.format("%02d", batchIndex);
         Path outputDir = SwitchUtils.buildSimulationOutputDir(config.optionPath, config.threshold);
         Path networkPath = SwitchUtils.buildNetworkPath(
-                config.networkType, config.N,
+                config.networkType, g.n,
                 null, null, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
                 config.kdMin, config.kdMax, config.m0, config.m,
                 config.gamma, config.swapNum);
@@ -254,8 +254,8 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "PowPow"; // ネットワークタイプ
-        final String optionPath = "check-sim2";
+        final String networkType = "ego-Twitter"; // ネットワークタイプ
+        final String optionPath = "real-sim";
         final int N = 500_000; // 頂点数
         final int kdMin = 5; // 最小次数
         final int kdMax = (int) Math.pow(N, 0.5); // 最大次数
@@ -270,15 +270,15 @@ public class SAR {
         final int m = 5; // 各新規ノードが接続する辺（弧）の数
         final double gamma = 2.5;
 
-        final int swapNum = 100000; // PowPow 用（null のとき 0 として扱う）
+        final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
         final boolean isFinal = true; // 最終状態のみ出力するか
-        final int batchSize = 16; // バッチサイズ
-        final int itrs = 20; // イテレーション数
+        final int batchSize = 10; // バッチサイズ
+        final int itrs = 2; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 3.0;
-        final double lambdaDirectedStep = 0.06;
+        final double lambdaDirectedMax = 4.0;
+        final double lambdaDirectedStep = 0.1;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
         // final double[] lambdaDirectedList = { 2.0 };
         // final double lambdaNonDirectedMin = 0.0;
