@@ -36,9 +36,6 @@ venv/
 # Test notebook (excluded from version control)
 test-notebooks/
 
-# Notebooks (excluded from version control)
-notebooks/
-
 # Simulation results output directory
 out/
 
