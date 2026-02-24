@@ -255,8 +255,8 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "DirectedCMInPow"; // ネットワークタイプ
-        final String optionPath = "pos-comparison";
+        final String networkType = "ego-Twitter"; // ネットワークタイプ
+        final String optionPath = "real-sim";
         final int N = 500_000; // 頂点数
         final int kdMin = 5; // 最小次数
         final int kdMax = (int) Math.pow(N, 0.5); // 最大次数
@@ -273,13 +273,13 @@ public class SAR {
 
         final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
         final boolean isFinal = true; // 最終状態のみ出力するか
-        final int batchSize = 20; // バッチサイズ
-        final int itrs = 20; // イテレーション数
+        final int batchSize = 16; // バッチサイズ
+        final int itrs = 40; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 3.0;
-        final double lambdaDirectedStep = 0.03;
+        final double lambdaDirectedMax = 0.8;
+        final double lambdaDirectedStep = 0.002;
         final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
         final double[] lambdaNondirectedList = { 0.0 }; // 無向辺の感染率
         // final double rho0Min = 0.0;
@@ -287,7 +287,7 @@ public class SAR {
         // final double rho0Step = 0.001;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); //
         // 初期感染率のリスト
-        final double[] rho0List = { 0.01, 0.03, 0.08 }; // 初期感染率のリスト
+        final double[] rho0List = { 0.00001, 0.00005, 0.0001 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
     }
 }

@@ -618,7 +618,7 @@ int main(void) {
             double root = roots_prime[r];
             double delta = fabs(root - valid_theta_d);
             double g_d_check = g_d(D, &dynamics, Binom, root);
-            if (root <= 1.0 && root >= 0.0 && delta < delta_min && fabs(g_d_check) < 1e-4) {
+            if (root <= 1.0 && root >= 0.0 && delta < delta_min && fabs(g_d_check) < 1e-3) {
                 prime_found = true;
                 delta_min = delta;
             }

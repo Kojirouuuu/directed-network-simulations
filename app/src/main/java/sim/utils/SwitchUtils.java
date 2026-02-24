@@ -7,6 +7,7 @@ import sim.network.topology.DirectedCMInPow;
 import sim.network.topology.DirectedCMOutPow;
 import sim.network.topology.EgoTwitter;
 import sim.network.topology.PowPow;
+import sim.network.topology.RevEgoTwitter;
 import sim.network.topology.SameInOut;
 import sim.network.topology.undirected.ER;
 import sim.network.topology.undirected.BA;
@@ -45,7 +46,7 @@ public final class SwitchUtils {
          * 使用されないパラメータは null でよい。ネットワークタイプに応じて必要なものだけ参照される。
          *
          * @param networkType ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-         *        PowPow, SameInOut, ER, BA, DirectedBA, ego-Twitter）
+         *        PowPow, SameInOut, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter）
          * @param N 頂点数
          * @param kdAve DirectedCM 用（null 可）
          * @param kuAve ER 用（null 可）
@@ -89,6 +90,7 @@ public final class SwitchUtils {
                         case "DirectedBA", "BA" -> String.format("m0=%d/m=%d", requireNonNull(m0, "BA requires m0"),
                                         requireNonNull(m, "BA requires m"));
                         case "ego-Twitter" -> ""; // N は無視。ファイルから読み込むためパラメータ不要
+                        case "rev-ego-Twitter" -> ""; // EgoTwitter の辺を反転したグラフ
                         default -> throw new IllegalArgumentException("Unknown network type: " + networkType);
                 };
 
@@ -105,6 +107,14 @@ public final class SwitchUtils {
         private static DirectedGraph loadEgoTwitter() {
                 try {
                         return EgoTwitter.loadFromDefaultEdgeList();
+                } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                }
+        }
+
+        private static DirectedGraph loadRevEgoTwitter() {
+                try {
+                        return RevEgoTwitter.loadReversedFromDefaultEdgeList();
                 } catch (IOException e) {
                         throw new UncheckedIOException(e);
                 }
@@ -180,6 +190,7 @@ public final class SwitchUtils {
                                         requireNonNull(params.kdMax(), "SameInOut requires kdMax"),
                                         params.gamma(), seed);
                         case "ego-Twitter" -> loadEgoTwitter();
+                        case "rev-ego-Twitter" -> loadRevEgoTwitter();
                         default -> throw new IllegalArgumentException("Unknown network type: " + params.networkType());
                 };
         }
@@ -244,6 +255,12 @@ public final class SwitchUtils {
                 public static GraphGeneratorParams forEgoTwitter() {
                         return new GraphGeneratorParams("ego-Twitter", 0, null, null, null, null, null, null, null,
                                         null, null, null, null, null);
+                }
+
+                /** rev-ego-Twitter 用。N は無視され、EgoTwitter の辺を反転したグラフを読み込む。 */
+                public static GraphGeneratorParams forRevEgoTwitter() {
+                        return new GraphGeneratorParams("rev-ego-Twitter", 0, null, null, null, null, null, null,
+                                        null, null, null, null, null, null);
                 }
         }
 

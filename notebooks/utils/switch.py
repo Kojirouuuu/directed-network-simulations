@@ -36,7 +36,7 @@ def build_network_path(
 
     Args:
         network_type: ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-            PowPow, SameInOut, ER, BA, DirectedBA）
+            PowPow, SameInOut, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter）
         N: 頂点数
         kd_ave: DirectedCM 用（None 可）
         ku_ave: ER 用（None 可）
@@ -84,6 +84,10 @@ def build_network_path(
         _require(m0, network_type, "m0")
         _require(m, network_type, "m")
         network_specific = f"m0={m0}/m={m}"
+    elif network_type == "ego-Twitter":
+        network_specific = ""
+    elif network_type == "rev-ego-Twitter":
+        network_specific = ""
     else:
         raise ValueError(f"Unknown network type: {network_type}")
 
