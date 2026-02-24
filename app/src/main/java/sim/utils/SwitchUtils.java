@@ -59,7 +59,7 @@ public final class SwitchUtils {
          * @return ネットワークパス（例: {networkType}/N={N}/{networkSpecific}/）
          */
         public static Path buildNetworkPath(String networkType, int N,
-                        Integer kdAve, Integer kuAve, Integer kInMin, Integer kInMax, Integer kOutMin, Integer kOutMax,
+                        Integer kdAve, Double kuAve, Integer kInMin, Integer kInMax, Integer kOutMin, Integer kOutMax,
                         Integer kdMin, Integer kdMax, Integer m0, Integer m,
                         Double gamma, Integer swapNum) {
                 String networkSpecific = switch (networkType) {

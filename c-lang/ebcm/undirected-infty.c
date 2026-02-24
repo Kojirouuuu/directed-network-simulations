@@ -439,7 +439,7 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 
 int main(void) {
     EBCMConfig cfg = {
-        .ku = {.mean = 6.0, .min = 5, .max = 707, .gamma = 4.0, .type = "Pow"},
+        .ku = {.mean = 12.0, .min = 5, .max = 300, .gamma = 2.5, .type = "Poi"},
     };
     double mu = 1.0;
 
@@ -447,11 +447,11 @@ int main(void) {
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_u_min = 0.0;
-    const double lambda_u_max = 1.0;
+    const double lambda_u_max = 10.0;
     const double lambda_u_step = 0.01;
 
-    const double rho0_min = 0.1;
-    const double rho0_max = 0.1;
+    const double rho0_min = 0.0;
+    const double rho0_max = 0.2;
     const double rho0_step = 0.01;
 
     const double theta_search_step = 0.005; /* g_u=0 の根探索の刻み */
@@ -487,7 +487,8 @@ int main(void) {
         mkdir(subdir, 0755);
         mkdir(dirbuf, 0755);
     } else if (strcmp(cfg.ku.type, "Poi") == 0) {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/kave=%.2f", D->mean_ku);
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/Poi/kuave=%.2f", D->mean_ku);
+        mkdir("out/ebcm/undirected-infty/Poi", 0755);
         mkdir(dirbuf, 0755);
     } else {
         snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/%s", cfg.ku.type);
