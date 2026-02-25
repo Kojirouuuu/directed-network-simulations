@@ -19,6 +19,8 @@ def build_network_path(
     *,
     kd_ave: Optional[int] = None,
     ku_ave: Optional[float] = None,
+    ku_min: Optional[int] = None,
+    ku_max: Optional[int] = None,
     k_in_min: Optional[int] = None,
     k_in_max: Optional[int] = None,
     k_out_min: Optional[int] = None,
@@ -36,13 +38,14 @@ def build_network_path(
 
     Args:
         network_type: ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-            PowPow, SameInOut, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter）
+            PowPow, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter）
         N: 頂点数
         kd_ave: DirectedCM 用（None 可）
         ku_ave: ER 用（None 可）
+        ku_min, ku_max: CM 用（None 可）
         k_in_min, k_in_max: DirectedCMInPow 用（None 可）
         k_out_min, k_out_max: DirectedCMOutPow 用（None 可）
-        kd_min, kd_max: PowPow, SameInOut 用（None 可）
+        kd_min, kd_max: PowPow, SameInOut 用（None 可）。CM では ku_min, ku_max として使用
         m0, m: DirectedBA, BA 用（None 可）
         gamma: DirectedCMInPow, DirectedCMOutPow, PowPow, SameInOut 用（None 可）
         swap_num: PowPow 用（None 可）
@@ -77,6 +80,11 @@ def build_network_path(
         _require(kd_max, "SameInOut", "kd_max")
         _require(gamma, "SameInOut", "gamma")
         network_specific = f"gamma={gamma:.2f}/kdMin={kd_min}/kdMax={kd_max}"
+    elif network_type == "CM":
+        _require(ku_min, "CM", "ku_min")
+        _require(ku_max, "CM", "ku_max")
+        _require(gamma, "CM", "gamma")
+        network_specific = f"gamma={gamma:.2f}/kuMin={ku_min}/kuMax={ku_max}"
     elif network_type == "ER":
         _require(ku_ave, "ER", "ku_ave")
         network_specific = f"kuAve={ku_ave:.2f}"
