@@ -10,14 +10,12 @@ import java.nio.file.Paths;
 
 public class GraphGen {
     public static void main(String[] args) throws IOException {
-        int n = 500_000;
         int kMin = 7;
         int kMax = 1000;
         double gamma = 4.0;
         int itrs = 1;
 
         for (int itr = 0; itr < itrs; itr++) {
-
             DirectedGraph g = EgoTwitter.loadFromDefaultEdgeList();
             System.out.println("");
             System.out.println("--------------------------------");

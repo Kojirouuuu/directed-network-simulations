@@ -314,7 +314,7 @@ static double rhs_Phi(const DegreeDist *D, const DynamicsConfig *p, const double
                      pow(theta_d, (double)(k) - (double)(p->T - 1)) * pow(q, (double)(p->T - 1));
         s += pk * Phi;
     }
-    return (1.0 - p->rho0) * s;
+    return s;
 }
 
 static double g_d(const DegreeDist *D, const DynamicsConfig *p, const double *Binom,
@@ -422,7 +422,7 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 int main(void) {
     EBCMConfig cfg = {
         // .ki = {.mean = 12.0, .min = 5, .max = 500000, .gamma = 2.5, .type = "Pow"},
-        .ki = {.mean = 12.0, .min = 5, .max = 707, .gamma = 2.5, .type = "Pow"},
+        .ki = {.mean = 12.7, .min = 0, .max = 1000, .gamma = 2.5, .type = "Poi"},
     };
     double mu = 1.0;
 
@@ -434,8 +434,8 @@ int main(void) {
     const double lambda_d_step = 0.004;
 
     const double rho0_min = 0.0;
-    const double rho0_max = 0.4;
-    const double rho0_step = 0.0004;
+    const double rho0_max = 1.0;
+    const double rho0_step = 0.001;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 
@@ -472,7 +472,7 @@ int main(void) {
         mkdir(subdir, 0755);
         mkdir(dirbuf, 0755);
     } else if (strcmp(cfg.ki.type, "Poi") == 0) {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/Poi/kuave=%.2f", D->mean_ki);
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/Poi/kdave=%.2f", D->mean_ki);
         mkdir("out/ebcm/directed-infty/Poi", 0755);
         mkdir(dirbuf, 0755);
     } else {
