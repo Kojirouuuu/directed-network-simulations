@@ -6,8 +6,12 @@ import sim.network.topology.DirectedCM;
 import sim.network.topology.DirectedCMInPow;
 import sim.network.topology.DirectedCMOutPow;
 import sim.network.topology.EgoTwitter;
+import sim.network.topology.Gplus;
+import sim.network.topology.HiggsSocial;
 import sim.network.topology.PowPow;
 import sim.network.topology.RevEgoTwitter;
+import sim.network.topology.RevGplus;
+import sim.network.topology.RevHiggsSocial;
 import sim.network.topology.SameInOut;
 import sim.network.topology.undirected.CM;
 import sim.network.topology.undirected.ER;
@@ -47,7 +51,8 @@ public final class SwitchUtils {
          * 使用されないパラメータは null でよい。ネットワークタイプに応じて必要なものだけ参照される。
          *
          * @param networkType ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-         *        PowPow, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter）
+         *        PowPow, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter,
+         *        rev-ego-Twitter, gplus, rev-gplus, higgs-social, rev-higgs-social）
          * @param N 頂点数
          * @param kdAve DirectedCM 用（null 可）
          * @param kuAve ER 用（null 可）
@@ -98,6 +103,10 @@ public final class SwitchUtils {
                                         requireNonNull(m, "BA requires m"));
                         case "ego-Twitter" -> ""; // N は無視。ファイルから読み込むためパラメータ不要
                         case "rev-ego-Twitter" -> ""; // EgoTwitter の辺を反転したグラフ
+                        case "gplus" -> "";
+                        case "rev-gplus" -> "";
+                        case "higgs-social" -> "";
+                        case "rev-higgs-social" -> "";
                         default -> throw new IllegalArgumentException("Unknown network type: " + networkType);
                 };
 
@@ -127,6 +136,38 @@ public final class SwitchUtils {
                 }
         }
 
+        private static DirectedGraph loadGplus() {
+                try {
+                        return Gplus.loadFromDefaultEdgeList();
+                } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                }
+        }
+
+        private static DirectedGraph loadRevGplus() {
+                try {
+                        return RevGplus.loadReversedFromDefaultEdgeList();
+                } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                }
+        }
+
+        private static DirectedGraph loadHiggsSocial() {
+                try {
+                        return HiggsSocial.loadFromDefaultEdgeList();
+                } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                }
+        }
+
+        private static DirectedGraph loadRevHiggsSocial() {
+                try {
+                        return RevHiggsSocial.loadReversedFromDefaultEdgeList();
+                } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                }
+        }
+
         /**
          * ネットワークタイプと設定値から DirectedGraph を生成する。
          * 使用されないパラメータは null または 0 でよい。
@@ -139,7 +180,8 @@ public final class SwitchUtils {
          * @param kOutMin DirectedCMOutPow 用（null 可）
          * @param kOutMax DirectedCMOutPow 用（null 可）
          * @param kuAve 平均次数（DirectedCMInPow, DirectedCMOutPow, ER）
-         * @param gamma DirectedCMInPow, DirectedCMOutPow, PowPow, SameInOut, CM 用（null 可）
+         * @param gamma DirectedCMInPow, DirectedCMOutPow, PowPow, SameInOut, CM 用（null
+         *        可）
          * @param kuMin CM 用（null 可）
          * @param kuMax CM 用（null 可）
          * @param m0 DirectedBA 用（null 可）
@@ -153,7 +195,8 @@ public final class SwitchUtils {
                         Integer kOutMax, Integer kuMin, Integer kuMax,
                         Double kuAve, Double gamma, Integer m0, Integer m, Integer swapNum, long seed) {
                 GraphGeneratorParams params = new GraphGeneratorParams(
-                                networkType, N, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, kuMin, kuMax, m0,
+                                networkType, N, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma,
+                                kuMin, kuMax, m0,
                                 m, swapNum);
                 return generateGraph(params, seed);
         }
@@ -204,6 +247,10 @@ public final class SwitchUtils {
                                         requireNonNull(params.gamma(), "CM requires gamma"), seed);
                         case "ego-Twitter" -> loadEgoTwitter();
                         case "rev-ego-Twitter" -> loadRevEgoTwitter();
+                        case "gplus" -> loadGplus();
+                        case "rev-gplus" -> loadRevGplus();
+                        case "higgs-social" -> loadHiggsSocial();
+                        case "rev-higgs-social" -> loadRevHiggsSocial();
                         default -> throw new IllegalArgumentException("Unknown network type: " + params.networkType());
                 };
         }
@@ -281,6 +328,30 @@ public final class SwitchUtils {
                 /** rev-ego-Twitter 用。N は無視され、EgoTwitter の辺を反転したグラフを読み込む。 */
                 public static GraphGeneratorParams forRevEgoTwitter() {
                         return new GraphGeneratorParams("rev-ego-Twitter", 0, null, null, null, null, null, null,
+                                        null, null, null, null, null, null, null, null);
+                }
+
+                /** gplus 用。N は無視され、デフォルトの gplus エッジリストから読み込む。 */
+                public static GraphGeneratorParams forGplus() {
+                        return new GraphGeneratorParams("gplus", 0, null, null, null, null, null, null,
+                                        null, null, null, null, null, null, null, null);
+                }
+
+                /** rev-gplus 用。N は無視され、Gplus の辺を反転したグラフを読み込む。 */
+                public static GraphGeneratorParams forRevGplus() {
+                        return new GraphGeneratorParams("rev-gplus", 0, null, null, null, null, null, null,
+                                        null, null, null, null, null, null, null, null);
+                }
+
+                /** higgs-social 用。N は無視され、デフォルトの higgs-social エッジリストから読み込む。 */
+                public static GraphGeneratorParams forHiggsSocial() {
+                        return new GraphGeneratorParams("higgs-social", 0, null, null, null, null, null, null,
+                                        null, null, null, null, null, null, null, null);
+                }
+
+                /** rev-higgs-social 用。N は無視され、HiggsSocial の辺を反転したグラフを読み込む。 */
+                public static GraphGeneratorParams forRevHiggsSocial() {
+                        return new GraphGeneratorParams("rev-higgs-social", 0, null, null, null, null, null, null,
                                         null, null, null, null, null, null, null, null);
                 }
         }

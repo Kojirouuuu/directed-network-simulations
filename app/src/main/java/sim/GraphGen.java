@@ -10,9 +10,6 @@ import java.nio.file.Paths;
 
 public class GraphGen {
     public static void main(String[] args) throws IOException {
-        int kMin = 7;
-        int kMax = 1000;
-        double gamma = 4.0;
         int itrs = 1;
 
         for (int itr = 0; itr < itrs; itr++) {
@@ -24,12 +21,12 @@ public class GraphGen {
             System.out.println("");
 
             // パス構成: out/edgelist/{NetworkPath}/{filename}
-            Path networkPath = SwitchUtils.buildNetworkPath("ego-Twitter", g.n,
+            Path networkPath = SwitchUtils.buildNetworkPath(g.name, g.n,
                     null, null, null, null, null, null, null, null,
-                    kMin, kMax, kMin, kMax,
-                    gamma, null);
+                    null, null, null, null,
+                    null, null);
             Path outputDir = Paths.get("out/edgelist").resolve(networkPath);
-            String fileName = String.format("%s_%d.csv", g.name, itr);
+            String fileName = String.format("%d.csv", itr);
             Path outputPath = outputDir.resolve(fileName);
 
             try {

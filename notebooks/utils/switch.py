@@ -38,7 +38,7 @@ def build_network_path(
 
     Args:
         network_type: ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-            PowPow, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter）
+            PowPow, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter, gplus, rev-gplus, higgs-social, rev-higgs-social）
         N: 頂点数
         kd_ave: DirectedCM 用（None 可）
         ku_ave: ER 用（None 可）
@@ -95,6 +95,14 @@ def build_network_path(
     elif network_type == "ego-Twitter":
         network_specific = ""
     elif network_type == "rev-ego-Twitter":
+        network_specific = ""
+    elif network_type == "gplus":
+        network_specific = ""
+    elif network_type == "rev-gplus":
+        network_specific = ""
+    elif network_type == "higgs-social":
+        network_specific = ""
+    elif network_type == "rev-higgs-social":
         network_specific = ""
     else:
         raise ValueError(f"Unknown network type: {network_type}")

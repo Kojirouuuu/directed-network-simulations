@@ -84,7 +84,8 @@ public class SAR {
     private static void processBatch(int batchIndex, SimulationConfig config,
             int[] progressItr, AtomicLong done, long totalTasks) {
         DirectedGraph g = SwitchUtils.generateGraph(config.networkType, config.N,
-                null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax, config.kuMin, config.kuMax,
+                null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                config.kuMin, config.kuMax,
                 config.kuAve, config.gamma, config.m0, config.m, config.swapNum, GRAPH_BASE_SEED + batchIndex);
 
         Path resultsPath = prepareOutputPath(g, batchIndex, config);
@@ -255,8 +256,8 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "CM"; // ネットワークタイプ
-        final String optionPath = "gamma-comparison";
+        final String networkType = "gplus"; // ネットワークタイプ
+        final String optionPath = "real-sar";
         final int N = 500_000; // 頂点数
         final int kdMin = 5; // 最小次数
         final int kdMax = (int) Math.pow(N, 0.5); // 最大次数
@@ -275,27 +276,30 @@ public class SAR {
 
         final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
         final boolean isFinal = true; // 最終状態のみ出力するか
-        final int batchSize = 20; // バッチサイズ
-        final int itrs = 2; // イテレーション数
+        final int batchSize = 16; // バッチサイズ
+        final int itrs = 4; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
-        // final double lambdaDirectedMin = 0.0;
-        // final double lambdaDirectedMax = 10.0;
-        // final double lambdaDirectedStep = 0.2;
-        // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin, lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        final double[] lambdaDirectedList = { 0.0 };
+        final double lambdaDirectedMin = 0.0;
+        final double lambdaDirectedMax = 0.1;
+        final double lambdaDirectedStep = 0.002;
+        final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
+                lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
+        // final double[] lambdaDirectedList = { 0.0 };
 
-        final double lambdaNondirectedMin = 0.0;
-        final double lambdaNondirectedMax = 2.0;
-        final double lambdaNondirectedStep = 0.05;
-        final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNondirectedMin, lambdaNondirectedMax, lambdaNondirectedStep); // 無向辺の感染率
-        // final double[] lambdaNondirectedList = { 0.0 };
+        // final double lambdaNondirectedMin = 0.0;
+        // final double lambdaNondirectedMax = 2.0;
+        // final double lambdaNondirectedStep = 0.05;
+        // final double[] lambdaNondirectedList =
+        // ArrayUtils.arange(lambdaNondirectedMin, lambdaNondirectedMax,
+        // lambdaNondirectedStep); // 無向辺の感染率
+        final double[] lambdaNondirectedList = { 0.0 };
 
         // final double rho0Min = 0.0;
         // final double rho0Max = 0.1;
         // final double rho0Step = 0.001;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); //
-        final double[] rho0List = { 0.08 }; // 初期感染率のリスト
+        final double[] rho0List = { 0.0001, 0.001, 0.01 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
     }
 }
