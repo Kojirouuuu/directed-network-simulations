@@ -1,5 +1,6 @@
 package sim.network;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -7,6 +8,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 有向グラフをCSR（Compressed Sparse Row）形式で表現するクラス。
@@ -239,6 +244,59 @@ public final class DirectedGraph {
         }
 
         return new DirectedGraph(name, n, mExp, outPtr, outIdx, outIsUndirected, inPtr, inIdx, inIsUndirected);
+    }
+
+    /**
+     * エッジリストファイルを読み、有向グラフを構築する。
+     * 各行を "a b" と解釈して有向辺 a→b を追加する。空行および '#' で始まる行は無視する。
+     * 頂点IDは出現順に 0..n-1 にマッピングする。
+     *
+     * @param name グラフ名（null の場合はファイル名を使用）
+     * @param path エッジリストファイルのパス
+     * @return 構築された DirectedGraph
+     * @throws IOException ファイル読み込みエラー
+     */
+    public static DirectedGraph loadFromEdgeList(String name, Path path) throws IOException {
+        if (path == null) {
+            throw new IllegalArgumentException("path must be non-null");
+        }
+        List<int[]> rawEdges = new ArrayList<>();
+        Map<String, Integer> idToIndex = new LinkedHashMap<>();
+
+        try (BufferedReader reader = Files.newBufferedReader(path)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("#")) {
+                    continue;
+                }
+                String[] parts = line.split("\\s+");
+                if (parts.length < 2) {
+                    continue;
+                }
+                String srcId = parts[0];
+                String dstId = parts[1];
+                int u = idToIndex.computeIfAbsent(srcId, k -> idToIndex.size());
+                int v = idToIndex.computeIfAbsent(dstId, k -> idToIndex.size());
+                rawEdges.add(new int[] { u, v });
+            }
+        }
+
+        int n = idToIndex.size();
+        int m = rawEdges.size();
+        int[] srcs = new int[m];
+        int[] dsts = new int[m];
+        boolean[] isUndirected = new boolean[m];
+
+        for (int i = 0; i < m; i++) {
+            int[] e = rawEdges.get(i);
+            srcs[i] = e[0];
+            dsts[i] = e[1];
+            isUndirected[i] = false;
+        }
+
+        String graphName = name != null ? name : path.getFileName().toString();
+        return fromEdgeListWithUndirectedFlag(graphName, n, srcs, dsts, isUndirected);
     }
 
     /**

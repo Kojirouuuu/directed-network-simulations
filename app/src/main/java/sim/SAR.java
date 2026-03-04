@@ -10,6 +10,7 @@ import sim.utils.SwitchUtils;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
@@ -84,12 +85,30 @@ public class SAR {
      */
     private static void processBatch(int batchIndex, SimulationConfig config,
             int[] progressItr, AtomicLong done, long totalTasks) {
-        DirectedGraph g = SwitchUtils.generateGraph(config.networkType, config.N,
-                null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
-                config.kuMin, config.kuMax,
-                config.kuAve, config.gamma, config.m0, config.m, config.swapNum, GRAPH_BASE_SEED + batchIndex);
-
-        Path resultsPath = prepareOutputPath(g, batchIndex, config);
+        DirectedGraph g;
+        Path resultsPath;
+        if (config.loadFromEdgeList) {
+            Path networkPath = SwitchUtils.buildNetworkPath(
+                    config.networkType, config.N,
+                    null, config.kuAve,
+                    config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                    config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
+                    config.gamma, config.swapNum);
+            Path edgeListPath = Paths.get("out/edgelist").resolve(networkPath)
+                    .resolve(String.format("%d.csv", batchIndex));
+            try {
+                g = DirectedGraph.loadFromEdgeList(config.networkType, edgeListPath);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to load edge list: " + edgeListPath, e);
+            }
+            resultsPath = prepareOutputPath(g, batchIndex, config);
+        } else {
+            g = SwitchUtils.generateGraph(config.networkType, config.N,
+                    null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                    config.kuMin, config.kuMax,
+                    config.kuAve, config.gamma, config.m0, config.m, config.swapNum, GRAPH_BASE_SEED + batchIndex);
+            resultsPath = prepareOutputPath(g, batchIndex, config);
+        }
 
         for (int itr = 0; itr < config.itrs; itr++) {
             progressItr[batchIndex] = itr;
@@ -259,11 +278,11 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "gplus"; // ネットワークタイプ
-        final String optionPath = "gillespie-sar";
+        final String networkType = "PowPow"; // ネットワークタイプ
+        final String optionPath = "in-out";
         final int N = 500_000; // 頂点数
         final int kdMin = 5; // 最小次数
-        final int kdMax = (int) Math.pow(N, 0.5); // 最大次数
+        final int kdMax = 1000; // 最大次数
         final int kInMin = 5; // 最小入次数
         final int kInMax = (int) Math.pow(N, 0.5); // 最大入次数
         // final int kInMax = N; // 最大入次数
@@ -278,6 +297,8 @@ public class SAR {
         final double gamma = 2.5;
 
         final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
+        /** true のとき out/edgelist/{networkPath}/{batchIndex}.csv からグラフを読み込む（GraphGen で生成したファイル） */
+        final boolean loadFromEdgeList = true;
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 16; // バッチサイズ
         final int itrs = 20; // イテレーション数
