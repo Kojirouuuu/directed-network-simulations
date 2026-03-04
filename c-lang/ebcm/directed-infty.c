@@ -430,12 +430,12 @@ int main(void) {
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
-    const double lambda_d_max = 4.0;
-    const double lambda_d_step = 0.004;
+    const double lambda_d_max = 2.0;
+    const double lambda_d_step = 0.002;
 
     const double rho0_min = 0.0;
     const double rho0_max = 1.0;
-    const double rho0_step = 0.001;
+    const double rho0_step = 0.0005;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 
@@ -633,7 +633,7 @@ int main(void) {
                 double g_d_check = g_d(D, &dynamics, Binom, root);
                 double g_d_prime_check = g_d_prime(D, &dynamics, Binom, root);
                 if (root <= 1.0 && root >= 0.0 && delta < delta_min_prime_prime &&
-                    fabs(g_d_prime_check) < 1e-2 && fabs(g_d_check) < 1e-2) {
+                    fabs(g_d_prime_check) < 1e-3 && fabs(g_d_check) < 1e-3) {
                     prime_prime_found = true;
                     delta_min_prime_prime = delta;
                 }
