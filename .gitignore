@@ -36,6 +36,9 @@ venv/
 # Test notebook (excluded from version control)
 test-notebooks/
 
+# Figure directory
+notebooks/fig/
+
 # Simulation results output directory
 out/
 
