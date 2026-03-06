@@ -449,9 +449,9 @@ int main(void) {
     const double lambda_d_max = 4.0;
     const double lambda_d_step = 0.004;
 
-    const double rho0_min = 0.0;
-    const double rho0_max = 0.4;
-    const double rho0_step = 0.0004;
+    const double rho0_min = 0.03;
+    const double rho0_max = 0.1;
+    const double rho0_step = 0.01;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 
