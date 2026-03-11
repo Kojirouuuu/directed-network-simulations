@@ -31,6 +31,7 @@ import java.nio.file.Paths;
 public final class SwitchUtils {
 
         private static final String SAR_PREFIX = "sar";
+        private static final String PERCOLATION_PREFIX = "percolation";
 
         private SwitchUtils() {
         }
@@ -44,6 +45,16 @@ public final class SwitchUtils {
          */
         public static Path buildSimulationOutputDir(String optionPath, int threshold) {
                 return Paths.get("out", SAR_PREFIX, optionPath, String.format("threshold=%d", threshold));
+        }
+
+        /**
+         * ボンドパーコレーションの出力ディレクトリを構築する。
+         *
+         * @param optionPath オプション識別子
+         * @return 出力ディレクトリ（例: out/percolation/{optionPath}）
+         */
+        public static Path buildPercolationOutputDir(String optionPath) {
+                return Paths.get("out", PERCOLATION_PREFIX, optionPath);
         }
 
         /**

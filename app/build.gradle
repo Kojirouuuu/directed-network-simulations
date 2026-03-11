@@ -57,3 +57,11 @@ task runGraphGen(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'sim.GraphGen'
 }
+
+// BondPercolation クラスを実行するカスタムタスク
+task runBondPercolation(type: JavaExec) {
+    group = 'application'
+    description = 'Runs the Bond Percolation simulation'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'sim.BondPercolation'
+}
