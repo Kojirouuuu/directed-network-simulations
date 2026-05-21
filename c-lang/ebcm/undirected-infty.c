@@ -439,20 +439,20 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 
 int main(void) {
     EBCMConfig cfg = {
-        .ku = {.mean = 10.0, .min = 0, .max = 1000, .gamma = 2.5, .type = "Poi"},
+        .ku = {.mean = 10.0, .min = 10, .max = 1000, .gamma = 5.0, .type = "Pow"},
     };
     double mu = 1.0;
 
     const int T_list[] = {3};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
-    const double lambda_u_min = 0.0;
-    const double lambda_u_max = 2.0;
-    const double lambda_u_step = 0.002;
+    const double lambda_u_min = 0.4;
+    const double lambda_u_max = 1.4;
+    const double lambda_u_step = 0.02;
 
-    const double rho0_min = 0.0;
-    const double rho0_max = 1.0;
-    const double rho0_step = 0.001;
+    const double rho0_min = 0.00;
+    const double rho0_max = 0.40;
+    const double rho0_step = 0.0005;
 
     const double theta_search_step = 0.005; /* g_u=0 の根探索の刻み */
 
@@ -476,24 +476,24 @@ int main(void) {
     char pathbuf[256];
     mkdir("out", 0755);
     mkdir("out/ebcm", 0755);
-    mkdir("out/ebcm/undirected-infty", 0755);
+    mkdir("out/ebcm/u-gamma", 0755);
     if (strcmp(cfg.ku.type, "Pow") == 0) {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/Pow/gamma=%.2f/kmin=%d/kmax=%d",
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/u-gamma/Pow/gamma=%.2f/kmin=%d/kmax=%d",
                  cfg.ku.gamma, D->ku_min, D->ku_max);
-        mkdir("out/ebcm/undirected-infty/Pow", 0755);
+        mkdir("out/ebcm/u-gamma/Pow", 0755);
         char subdir[256];
-        snprintf(subdir, sizeof subdir, "out/ebcm/undirected-infty/Pow/gamma=%.2f", cfg.ku.gamma);
+        snprintf(subdir, sizeof subdir, "out/ebcm/u-gamma/Pow/gamma=%.2f", cfg.ku.gamma);
         mkdir(subdir, 0755);
-        snprintf(subdir, sizeof subdir, "out/ebcm/undirected-infty/Pow/gamma=%.2f/kmin=%d",
-                 cfg.ku.gamma, D->ku_min);
+        snprintf(subdir, sizeof subdir, "out/ebcm/u-gamma/Pow/gamma=%.2f/kmin=%d", cfg.ku.gamma,
+                 D->ku_min);
         mkdir(subdir, 0755);
         mkdir(dirbuf, 0755);
     } else if (strcmp(cfg.ku.type, "Poi") == 0) {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/Poi/kuave=%.2f", D->mean_ku);
-        mkdir("out/ebcm/undirected-infty/Poi", 0755);
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/u-gamma/Poi/kuave=%.2f", D->mean_ku);
+        mkdir("out/ebcm/u-gamma/Poi", 0755);
         mkdir(dirbuf, 0755);
     } else {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/undirected-infty/%s", cfg.ku.type);
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/u-gamma/%s", cfg.ku.type);
         mkdir(dirbuf, 0755);
     }
 
