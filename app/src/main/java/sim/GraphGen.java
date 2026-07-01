@@ -10,14 +10,15 @@ import java.util.stream.IntStream;
 
 public class GraphGen {
     /** 並列ワーカー数（コア数） */
-    private static final int batchSize = 20;
+    private static final int batchSize = 1;
 
     /** 各コアが作成するネットワーク数 */
     private static final int n = 500_000;
-    private static final int kdMin = 5;
-    private static final int kdMax = 1000;
-    private static final double gamma = 2.5;
-    private static final int swapNum = 0;
+    private static final int kMin = 5;
+    private static final int kMax = 1000;
+    private static final double gammaIn = 2.5;
+    private static final double gammaOut = 3.5;
+    private static final double corrA = 0.2;
     private static final int itr = 1;
     private static final long seed = 42L;
 
@@ -26,8 +27,9 @@ public class GraphGen {
             for (int k = 0; k < itr; k++) {
                 int runIndex = workerId + k * batchSize;
                 try {
-                    DirectedGraph g = SwitchUtils.generateGraph("PowPow", n,
-                        null, kdMin, kdMax, null, null, null, null, null, null, null, gamma, null, null, swapNum, seed + runIndex);
+                    DirectedGraph g = SwitchUtils.generateGraph("SchwartzDirectedSF", n,
+                            null, null, null, kMin, kMax, kMin, kMax, null, null, null, null, null, null, null,
+                            gammaIn, gammaOut, corrA, seed + runIndex);
                     synchronized (System.out) {
                         System.out.println("");
                         System.out.println("--------------------------------");
@@ -39,9 +41,9 @@ public class GraphGen {
 
                     // パス構成: out/edgelist/{NetworkPath}/{filename}
                     Path networkPath = SwitchUtils.buildNetworkPath(g.name, g.n,
-                            null, null, null, null, null, null,
-                            kdMin, kdMax, null, null, null, null,
-                            gamma, swapNum);
+                            null, null, kMin, kMax, kMin, kMax, null, null, null, null, null, null,
+                            null, null,
+                            gammaIn, gammaOut, corrA);
                     Path outputDir = Paths.get("out/edgelist").resolve(networkPath);
                     String fileName = String.format("%d.csv", runIndex);
                     Path outputPath = outputDir.resolve(fileName);
