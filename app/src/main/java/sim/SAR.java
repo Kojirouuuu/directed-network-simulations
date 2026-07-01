@@ -93,7 +93,8 @@ public class SAR {
                     null, config.kuAve,
                     config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
                     config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
-                    config.gamma, config.swapNum);
+                    config.gamma, config.swapNum,
+                    config.gammaIn, config.gammaOut, config.corrA);
             Path edgeListPath = Paths.get("out/edgelist").resolve(networkPath)
                     .resolve(String.format("%d.csv", batchIndex));
             try {
@@ -106,7 +107,9 @@ public class SAR {
             g = SwitchUtils.generateGraph(config.networkType, config.N,
                     null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
                     config.kuMin, config.kuMax,
-                    config.kuAve, config.gamma, config.m0, config.m, config.swapNum, GRAPH_BASE_SEED + batchIndex);
+                    config.kuAve, config.gamma, config.m0, config.m, config.swapNum,
+                    config.gammaIn, config.gammaOut, config.corrA,
+                    GRAPH_BASE_SEED + batchIndex);
             resultsPath = prepareOutputPath(g, batchIndex, config);
         }
 
@@ -151,7 +154,8 @@ public class SAR {
                 null, config.kuAve,
                 config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
                 config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
-                config.gamma, config.swapNum);
+                config.gamma, config.swapNum,
+                config.gammaIn, config.gammaOut, config.corrA);
         Path basePath = outputDir.resolve(networkPath);
         return PathsEx.resolveIndexed(
                 basePath.resolve(String.format("results_%s.csv", idx)));
@@ -278,25 +282,30 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "CM"; // ネットワークタイプ
-        final String optionPath = "gamma";
-        final int N = 500_000; // 頂点数
+        final String networkType = "DirectedCMInPow"; // ネットワークタイプ
+        final String optionPath = "2607";
+        final int N = 100_000; // 頂点数
         final int kdMin = 5; // 最小次数
-        final int kdMax = 1000; // 最大次数
+        final int kdMax = (int) Math.sqrt(N); // 最大次数
         final int kInMin = 5; // 最小入次数
-        final int kInMax = 1000; // 最大入次数
+        final int kInMax = (int) Math.sqrt(N); // 最大入次数
         // final int kInMax = N; // 最大入次数
         final int kOutMin = 5; // 最小出次数
-        final int kOutMax = 1000; // 最大出次数
+        final int kOutMax = (int) Math.sqrt(N); // 最大出次数
         // final int kOutMax = N; // 最大出次数
         final double kuAve = 10; // 平均次数
-        final int kuMin = 7; // 最小次数
-        final int kuMax = 1000; // 最大次数
+        final int kuMin = 5; // 最小次数
+        final int kuMax = (int) Math.sqrt(N); // 最大次数
         final int m0 = 6; // 初期完全グラフの頂点数
         final int m = 6; // 各新規ノードが接続する辺（弧）の数
-        final double gamma = 3.0;
+        final double gamma = 3.5;
 
         final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
+
+        // SchwartzDirectedSF 用パラメータ（他のネットワークタイプでは未使用）
+        final Double gammaIn = gamma; // λ_in
+        final Double gammaOut = gamma; // λ_out
+        final Double corrA = null; // 相関確率 A ∈ [0, 1]
         /**
          * true のとき out/edgelist/{networkPath}/{batchIndex}.csv からグラフを読み込む（GraphGen
          * で生成したファイル）
@@ -304,28 +313,29 @@ public class SAR {
         final boolean loadFromEdgeList = false;
         final boolean isFinal = true; // 最終状態のみ出力するか
         final int batchSize = 16; // バッチサイズ
-        final int itrs = 2; // イテレーション数
+        final int itrs = 8; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 2.0;
-        final double lambdaDirectedStep = 0.04;
-        // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
-        // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        final double[] lambdaDirectedList = { 0.0 };
+        final double lambdaDirectedMax = 10.0;
+        final double lambdaDirectedStep = 0.1;
+        final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
+                lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
+        // final double[] lambdaDirectedList = { 0.0 };
 
         final double lambdaNondirectedMin = 0.0;
         final double lambdaNondirectedMax = 2.0;
         final double lambdaNondirectedStep = 0.02;
-        final double[] lambdaNondirectedList = ArrayUtils.arange(lambdaNondirectedMin, lambdaNondirectedMax,
-                lambdaNondirectedStep); // 無向辺の感染率
-        // final double[] lambdaNondirectedList = { 0.0 };
+        // final double[] lambdaNondirectedList =
+        // ArrayUtils.arange(lambdaNondirectedMin, lambdaNondirectedMax,
+        // lambdaNondirectedStep); // 無向辺の感染率
+        final double[] lambdaNondirectedList = { 0.0 };
 
         // final double rho0Min = 0.0;
         // final double rho0Max = 0.1;
         // final double rho0Step = 0.001;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); //
-        final double[] rho0List = { 0.05, 0.08, 0.1 }; // 初期感染率のリスト
+        final double[] rho0List = { 0.08 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
         final boolean useGillespie = false; // true: Gillespie方式, false: イベント駆動方式
     }

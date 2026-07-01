@@ -68,7 +68,8 @@ public class BondPercolation {
                     null, config.kuAve,
                     config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
                     config.kdMin, config.kdMax, config.kuMin, config.kuMax,
-                    config.m0, config.m, config.gamma, config.swapNum);
+                    config.m0, config.m, config.gamma, config.swapNum,
+                    config.gammaIn, config.gammaOut, config.corrA);
             Path edgeListPath = Paths.get("out/edgelist").resolve(networkPath)
                     .resolve(String.format("%d.csv", batchIndex));
             try {
@@ -82,6 +83,7 @@ public class BondPercolation {
                     config.kOutMin, config.kOutMax,
                     config.kuMin, config.kuMax,
                     config.kuAve, config.gamma, config.m0, config.m, config.swapNum,
+                    config.gammaIn, config.gammaOut, config.corrA,
                     GRAPH_BASE_SEED + batchIndex);
         }
 
@@ -116,7 +118,8 @@ public class BondPercolation {
                 null, config.kuAve,
                 config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
                 config.kdMin, config.kdMax, config.kuMin, config.kuMax,
-                config.m0, config.m, config.gamma, config.swapNum);
+                config.m0, config.m, config.gamma, config.swapNum,
+                config.gammaIn, config.gammaOut, config.corrA);
         Path basePath = outputDir.resolve(networkPath);
         return PathsEx.resolveIndexed(basePath.resolve(String.format("results_%s.csv", idx)));
     }
@@ -158,29 +161,35 @@ public class BondPercolation {
     }
 
     private static class SimulationConfig {
-        final String networkType = "PowPow";
-        final String optionPath = "test";
-        final int N = 1_000_000;
-        final int kdMin = 1;
+        final String networkType = "DirectedCMInPow";
+        final String optionPath = "2607";
+        final int N = 100_000;
+        final int kdMin = 2;
         final int kdMax = 1000;
-        final int kInMin = 1;
+        final int kInMin = 2;
         final int kInMax = (int) Math.sqrt(N);
-        final int kOutMin = 1;
+        final int kOutMin = 2;
         final int kOutMax = (int) Math.sqrt(N);
-        final double kuAve = 10;
-        final int kuMin = 1;
-        final int kuMax = 1000;
+        final double kuAve = 0;
+        final int kuMin = 2;
+        final int kuMax = (int) Math.sqrt(N);
         final int m0 = 6;
         final int m = 6;
-        final double gamma = 2.5;
+        final double gamma = 3.3;
         final int swapNum = 0;
+
+        // SchwartzDirectedSF 用パラメータ（他のネットワークタイプでは未使用）
+        final Double gammaIn = 3.3; // λ_in
+        final Double gammaOut = 3.3; // λ_out
+        final Double corrA = null; // 相関確率 A ∈ [0, 1]
+
         final boolean loadFromEdgeList = false;
 
-        final int batchSize = 10;
-        final int itrs = 10;
+        final int batchSize = 16;
+        final int itrs = 8;
         final double pMin = 0.0;
         final double pMax = 1.0;
-        final double pStep = 0.01;
+        final double pStep = 0.005;
         final double[] pList = ArrayUtils.arange(pMin, pMax, pStep);
     }
 }
