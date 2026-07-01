@@ -31,6 +31,9 @@ def build_network_path(
     m: Optional[int] = None,
     gamma: Optional[float] = None,
     swap_num: Optional[int] = None,
+    gamma_in: Optional[float] = None,
+    gamma_out: Optional[float] = None,
+    corr_a: Optional[float] = None,
 ) -> Path:
     """
     ネットワークパス（シミュレーションディレクトリ以下の相対パス）を構築する。
@@ -38,17 +41,18 @@ def build_network_path(
 
     Args:
         network_type: ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-            PowPow, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter, gplus, rev-gplus, higgs-social, rev-higgs-social）
+            PowPow, SameInOut, SchwartzDirectedSF, CM, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter, gplus, rev-gplus, higgs-social, rev-higgs-social）
         N: 頂点数
         kd_ave: DirectedCM 用（None 可）
         ku_ave: ER 用（None 可）
         ku_min, ku_max: CM 用（None 可）
-        k_in_min, k_in_max: DirectedCMInPow 用（None 可）
-        k_out_min, k_out_max: DirectedCMOutPow 用（None 可）
+        k_in_min, k_in_max: DirectedCMInPow, SchwartzDirectedSF 用（None 可）
+        k_out_min, k_out_max: DirectedCMOutPow, SchwartzDirectedSF 用（None 可）
         kd_min, kd_max: PowPow, SameInOut 用（None 可）。CM では ku_min, ku_max として使用
         m0, m: DirectedBA, BA 用（None 可）
         gamma: DirectedCMInPow, DirectedCMOutPow, PowPow, SameInOut 用（None 可）
         swap_num: PowPow 用（None 可）
+        gamma_in, gamma_out, corr_a: SchwartzDirectedSF 用（None 可）
 
     Returns:
         ネットワークパス（例: DirectedCMInPow/N=500000/gamma=2.50/kInMin=5/kInMax=707）
@@ -80,6 +84,20 @@ def build_network_path(
         _require(kd_max, "SameInOut", "kd_max")
         _require(gamma, "SameInOut", "gamma")
         network_specific = f"gamma={gamma:.2f}/kdMin={kd_min}/kdMax={kd_max}"
+    elif network_type == "SchwartzDirectedSF":
+        _require(gamma_in, "SchwartzDirectedSF", "gamma_in")
+        _require(gamma_out, "SchwartzDirectedSF", "gamma_out")
+        _require(k_in_min, "SchwartzDirectedSF", "k_in_min")
+        _require(k_in_max, "SchwartzDirectedSF", "k_in_max")
+        _require(k_out_min, "SchwartzDirectedSF", "k_out_min")
+        _require(k_out_max, "SchwartzDirectedSF", "k_out_max")
+        _require(corr_a, "SchwartzDirectedSF", "corr_a")
+        network_specific = (
+            f"gammaIn={gamma_in:.2f}/gammaOut={gamma_out:.2f}"
+            f"/kInMin={k_in_min}/kInMax={k_in_max}"
+            f"/kOutMin={k_out_min}/kOutMax={k_out_max}"
+            f"/corrA={corr_a:.2f}"
+        )
     elif network_type == "CM":
         _require(ku_min, "CM", "ku_min")
         _require(ku_max, "CM", "ku_max")

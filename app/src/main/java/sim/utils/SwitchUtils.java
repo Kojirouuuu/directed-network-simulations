@@ -13,6 +13,7 @@ import sim.network.topology.RevEgoTwitter;
 import sim.network.topology.RevGplus;
 import sim.network.topology.RevHiggsSocial;
 import sim.network.topology.SameInOut;
+import sim.network.topology.SchwartzDirectedSF;
 import sim.network.topology.undirected.CM;
 import sim.network.topology.undirected.ER;
 import sim.network.topology.undirected.BA;
@@ -79,12 +80,16 @@ public final class SwitchUtils {
          * @param m DirectedBA 用（null 可）
          * @param gamma DirectedCMInPow, DirectedCMOutPow, PowPow 用（null 可）
          * @param swapNum PowPow 用（null 可）
+         * @param gammaIn SchwartzDirectedSF 用（null 可）
+         * @param gammaOut SchwartzDirectedSF 用（null 可）
+         * @param corrA SchwartzDirectedSF 用（null 可）
          * @return ネットワークパス（例: {networkType}/N={N}/{networkSpecific}/）
          */
         public static Path buildNetworkPath(String networkType, int N,
                         Integer kdAve, Double kuAve, Integer kInMin, Integer kInMax, Integer kOutMin, Integer kOutMax,
                         Integer kdMin, Integer kdMax, Integer kuMin, Integer kuMax, Integer m0, Integer m,
-                        Double gamma, Integer swapNum) {
+                        Double gamma, Integer swapNum,
+                        Double gammaIn, Double gammaOut, Double corrA) {
                 String networkSpecific = switch (networkType) {
                         case "DirectedCM" -> String.format("kdAve=%d",
                                         requireNonNull(kdAve, "DirectedCM requires kdAve"));
@@ -105,6 +110,15 @@ public final class SwitchUtils {
                                         requireNonNull(gamma, "SameInOut requires gamma"),
                                         requireNonNull(kdMin, "SameInOut requires kdMin"),
                                         requireNonNull(kdMax, "SameInOut requires kdMax"));
+                        case "SchwartzDirectedSF" -> String.format(
+                                        "gammaIn=%.2f/gammaOut=%.2f/kInMin=%d/kInMax=%d/kOutMin=%d/kOutMax=%d/corrA=%.2f",
+                                        requireNonNull(gammaIn, "SchwartzDirectedSF requires gammaIn"),
+                                        requireNonNull(gammaOut, "SchwartzDirectedSF requires gammaOut"),
+                                        requireNonNull(kInMin, "SchwartzDirectedSF requires kInMin"),
+                                        requireNonNull(kInMax, "SchwartzDirectedSF requires kInMax"),
+                                        requireNonNull(kOutMin, "SchwartzDirectedSF requires kOutMin"),
+                                        requireNonNull(kOutMax, "SchwartzDirectedSF requires kOutMax"),
+                                        requireNonNull(corrA, "SchwartzDirectedSF requires corrA"));
                         case "CM" -> String.format("gamma=%.2f/kuMin=%d/kuMax=%d",
                                         requireNonNull(gamma, "CM requires gamma"),
                                         requireNonNull(kuMin, "CM requires kuMin"),
@@ -198,17 +212,21 @@ public final class SwitchUtils {
          * @param m0 DirectedBA 用（null 可）
          * @param m DirectedBA 用（null 可）
          * @param swapNum PowPow 用（null 可、0 として扱う）
+         * @param gammaIn SchwartzDirectedSF 用（null 可）
+         * @param gammaOut SchwartzDirectedSF 用（null 可）
+         * @param corrA SchwartzDirectedSF 用（null 可）
          * @param seed 乱数シード
          * @return 生成された DirectedGraph
          */
         public static DirectedGraph generateGraph(String networkType, int N,
                         Integer kdAve, Integer kdMin, Integer kdMax, Integer kInMin, Integer kInMax, Integer kOutMin,
                         Integer kOutMax, Integer kuMin, Integer kuMax,
-                        Double kuAve, Double gamma, Integer m0, Integer m, Integer swapNum, long seed) {
+                        Double kuAve, Double gamma, Integer m0, Integer m, Integer swapNum,
+                        Double gammaIn, Double gammaOut, Double corrA, long seed) {
                 GraphGeneratorParams params = new GraphGeneratorParams(
                                 networkType, N, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma,
                                 kuMin, kuMax, m0,
-                                m, swapNum);
+                                m, swapNum, gammaIn, gammaOut, corrA);
                 return generateGraph(params, seed);
         }
 
@@ -252,6 +270,15 @@ public final class SwitchUtils {
                                         requireNonNull(params.kdMin(), "SameInOut requires kdMin"),
                                         requireNonNull(params.kdMax(), "SameInOut requires kdMax"),
                                         params.gamma(), seed);
+                        case "SchwartzDirectedSF" -> SchwartzDirectedSF.generate(name, N,
+                                        requireNonNull(params.kInMin(), "SchwartzDirectedSF requires kInMin"),
+                                        requireNonNull(params.kInMax(), "SchwartzDirectedSF requires kInMax"),
+                                        requireNonNull(params.kOutMin(), "SchwartzDirectedSF requires kOutMin"),
+                                        requireNonNull(params.kOutMax(), "SchwartzDirectedSF requires kOutMax"),
+                                        requireNonNull(params.gammaIn(), "SchwartzDirectedSF requires gammaIn"),
+                                        requireNonNull(params.gammaOut(), "SchwartzDirectedSF requires gammaOut"),
+                                        requireNonNull(params.corrA(), "SchwartzDirectedSF requires corrA"),
+                                        seed);
                         case "CM" -> CM.generate(name, N,
                                         requireNonNull(params.kuMin(), "CM requires kuMin"),
                                         requireNonNull(params.kuMax(), "CM requires kuMax"),
@@ -286,84 +313,98 @@ public final class SwitchUtils {
                         Integer kuMax,
                         Integer m0,
                         Integer m,
-                        Integer swapNum) {
+                        Integer swapNum,
+                        Double gammaIn,
+                        Double gammaOut,
+                        Double corrA) {
                 public static GraphGeneratorParams forDirectedCM(int N, int kdAve) {
                         return new GraphGeneratorParams("DirectedCM", N, kdAve, null, null, null, null, null, null,
-                                        null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null);
                 }
 
                 public static GraphGeneratorParams forDirectedCMInPow(int N, int kInMin, int kInMax, Double kuAve,
                                 Double gamma) {
                         return new GraphGeneratorParams("DirectedCMInPow", N, null, null, null, kInMin, kInMax, null,
-                                        null, kuAve, gamma, null, null, null, null, null);
+                                        null, kuAve, gamma, null, null, null, null, null, null, null, null);
                 }
 
                 public static GraphGeneratorParams forDirectedCMOutPow(int N, int kOutMin, int kOutMax, Double kuAve,
                                 Double gamma) {
                         return new GraphGeneratorParams("DirectedCMOutPow", N, null, null, null, null, null, kOutMin,
-                                        kOutMax, kuAve, gamma, null, null, null, null, null);
+                                        kOutMax, kuAve, gamma, null, null, null, null, null, null, null, null);
                 }
 
                 public static GraphGeneratorParams forPowPow(int N, int kMin, int kMax, Double gamma, int swapNum) {
                         return new GraphGeneratorParams("PowPow", N, null, kMin, kMax, null, null, null, null,
-                                        null, gamma, null, null, null, null, swapNum);
+                                        null, gamma, null, null, null, null, swapNum, null, null, null);
                 }
 
                 public static GraphGeneratorParams forSameInOut(int N, int kMin, int kMax, Double gamma) {
                         return new GraphGeneratorParams("SameInOut", N, null, kMin, kMax, null, null, null, null,
-                                        null, gamma, null, null, null, null, null);
+                                        null, gamma, null, null, null, null, null, null, null, null);
+                }
+
+                /**
+                 * Schwartz et al. 2002 の相関有向スケールフリーネットワーク用。
+                 */
+                public static GraphGeneratorParams forSchwartzDirectedSF(
+                                int N, int kInMin, int kInMax, int kOutMin, int kOutMax,
+                                Double gammaIn, Double gammaOut, Double corrA) {
+                        return new GraphGeneratorParams("SchwartzDirectedSF", N, null, null, null,
+                                        kInMin, kInMax, kOutMin, kOutMax, null, null, null, null, null, null, null,
+                                        gammaIn, gammaOut, corrA);
                 }
 
                 /** 無向コンフィギュレーションモデル用。 */
                 public static GraphGeneratorParams forCM(int N, int kuMin, int kuMax, Double gamma) {
                         return new GraphGeneratorParams("CM", N, null, null, null, null, null, null, null,
-                                        null, gamma, kuMin, kuMax, null, null, null);
+                                        null, gamma, kuMin, kuMax, null, null, null, null, null, null);
                 }
 
                 public static GraphGeneratorParams forER(int N, Double kuAve) {
                         return new GraphGeneratorParams("ER", N, null, null, null, null, null, null, null, kuAve, null,
-                                        null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null);
                 }
 
                 public static GraphGeneratorParams forBA(int N, int m0, int m) {
                         return new GraphGeneratorParams("BA", N, null, null, null, null, null, null, null, null, null,
-                                        m0, m, null, null, null);
+                                        m0, m, null, null, null, null, null, null);
                 }
 
                 /** ego-Twitter 用。N は無視され、デフォルトのエッジリストファイルから読み込む。 */
                 public static GraphGeneratorParams forEgoTwitter() {
                         return new GraphGeneratorParams("ego-Twitter", 0, null, null, null, null, null, null, null,
-                                        null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null);
                 }
 
                 /** rev-ego-Twitter 用。N は無視され、EgoTwitter の辺を反転したグラフを読み込む。 */
                 public static GraphGeneratorParams forRevEgoTwitter() {
                         return new GraphGeneratorParams("rev-ego-Twitter", 0, null, null, null, null, null, null,
-                                        null, null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null, null);
                 }
 
                 /** gplus 用。N は無視され、デフォルトの gplus エッジリストから読み込む。 */
                 public static GraphGeneratorParams forGplus() {
                         return new GraphGeneratorParams("gplus", 0, null, null, null, null, null, null,
-                                        null, null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null, null);
                 }
 
                 /** rev-gplus 用。N は無視され、Gplus の辺を反転したグラフを読み込む。 */
                 public static GraphGeneratorParams forRevGplus() {
                         return new GraphGeneratorParams("rev-gplus", 0, null, null, null, null, null, null,
-                                        null, null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null, null);
                 }
 
                 /** higgs-social 用。N は無視され、デフォルトの higgs-social エッジリストから読み込む。 */
                 public static GraphGeneratorParams forHiggsSocial() {
                         return new GraphGeneratorParams("higgs-social", 0, null, null, null, null, null, null,
-                                        null, null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null, null);
                 }
 
                 /** rev-higgs-social 用。N は無視され、HiggsSocial の辺を反転したグラフを読み込む。 */
                 public static GraphGeneratorParams forRevHiggsSocial() {
                         return new GraphGeneratorParams("rev-higgs-social", 0, null, null, null, null, null, null,
-                                        null, null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null, null);
                 }
         }
 
