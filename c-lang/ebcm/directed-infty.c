@@ -421,21 +421,21 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 
 int main(void) {
     EBCMConfig cfg = {
-        // .ki = {.mean = 12.0, .min = 5, .max = 500000, .gamma = 2.5, .type = "Pow"},
-        .ki = {.mean = 12.7, .min = 10, .max = 1000, .gamma = 5.0, .type = "Pow"},
+        .ki = {.mean = 12.0, .min = 5, .max = 707, .gamma = 2.5, .type = "Pow"},
+        // .ki = {.mean = 12.50, .min = 5, .max = 707, .gamma = 2.5, .type = "Poi"},
     };
     double mu = 1.0;
 
     const int T_list[] = {3};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
-    const double lambda_d_min = 0.4;
-    const double lambda_d_max = 1.4;
-    const double lambda_d_step = 0.02;
+    const double lambda_d_min = 0.0;
+    const double lambda_d_max = 4.0;
+    const double lambda_d_step = 0.004;
 
     const double rho0_min = 0.00;
-    const double rho0_max = 0.40;
-    const double rho0_step = 0.0005;
+    const double rho0_max = 1.00;
+    const double rho0_step = 0.0002;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 
@@ -459,24 +459,24 @@ int main(void) {
     char pathbuf[256];
     mkdir("out", 0755);
     mkdir("out/ebcm", 0755);
-    mkdir("out/ebcm/d-gamma", 0755);
+    mkdir("out/ebcm/directed-infty", 0755);
     if (strcmp(cfg.ki.type, "Pow") == 0) {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/d-gamma/Pow/gamma=%.2f/kmin=%d/kmax=%d",
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/Pow/gamma=%.2f/kmin=%d/kmax=%d",
                  cfg.ki.gamma, D->ki_min, D->ki_max);
-        mkdir("out/ebcm/d-gamma/Pow", 0755);
+        mkdir("out/ebcm/directed-infty/Pow", 0755);
         char subdir[256];
-        snprintf(subdir, sizeof subdir, "out/ebcm/d-gamma/Pow/gamma=%.2f", cfg.ki.gamma);
+        snprintf(subdir, sizeof subdir, "out/ebcm/directed-infty/Pow/gamma=%.2f", cfg.ki.gamma);
         mkdir(subdir, 0755);
-        snprintf(subdir, sizeof subdir, "out/ebcm/d-gamma/Pow/gamma=%.2f/kmin=%d", cfg.ki.gamma,
+        snprintf(subdir, sizeof subdir, "out/ebcm/directed-infty/Pow/gamma=%.2f/kmin=%d", cfg.ki.gamma,
                  D->ki_min);
         mkdir(subdir, 0755);
         mkdir(dirbuf, 0755);
     } else if (strcmp(cfg.ki.type, "Poi") == 0) {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/d-gamma/Poi/kdave=%.2f", D->mean_ki);
-        mkdir("out/ebcm/d-gamma/Poi", 0755);
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/Poi/kdave=%.2f", D->mean_ki);
+        mkdir("out/ebcm/directed-infty/Poi", 0755);
         mkdir(dirbuf, 0755);
     } else {
-        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/d-gamma/%s", cfg.ki.type);
+        snprintf(dirbuf, sizeof dirbuf, "out/ebcm/directed-infty/%s", cfg.ki.type);
         mkdir(dirbuf, 0755);
     }
 
@@ -633,7 +633,7 @@ int main(void) {
                 double g_d_check = g_d(D, &dynamics, Binom, root);
                 double g_d_prime_check = g_d_prime(D, &dynamics, Binom, root);
                 if (root <= 1.0 && root >= 0.0 && delta < delta_min_prime_prime &&
-                    fabs(g_d_prime_check) < 1e-3 && fabs(g_d_check) < 1e-3) {
+                    fabs(g_d_prime_check) < 4 * 1e-3 && fabs(g_d_check) < 4 * 1e-3) {
                     prime_prime_found = true;
                     delta_min_prime_prime = delta;
                 }
