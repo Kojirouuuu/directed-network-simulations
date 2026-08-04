@@ -421,8 +421,8 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 
 int main(void) {
     EBCMConfig cfg = {
-        .ki = {.mean = 12.0, .min = 5, .max = 707, .gamma = 2.5, .type = "Pow"},
-        // .ki = {.mean = 12.50, .min = 5, .max = 707, .gamma = 2.5, .type = "Poi"},
+        // .ki = {.mean = 12.0, .min = 5, .max = 707, .gamma = 2.5, .type = "Pow"},
+        .ki = {.mean = 12.50, .min = 5, .max = 707, .gamma = 2.5, .type = "Poi"},
     };
     double mu = 1.0;
 
