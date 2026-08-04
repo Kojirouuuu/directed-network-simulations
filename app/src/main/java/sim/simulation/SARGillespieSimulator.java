@@ -25,6 +25,7 @@ public final class SARGillespieSimulator {
     private final double tMax;
     private final int[] thresholdList;
     private final Random random;
+    private final FixedIntervalSampler intervalSampler;
 
     // ── ノード状態 ──
     private final Status[] status;
@@ -58,6 +59,13 @@ public final class SARGillespieSimulator {
 
     public SARGillespieSimulator(DirectedGraph g, double lambdaDirected, double lambdaNondirected,
             double mu, double tMax, int[] thresholdList, long seed) {
+        this(g, lambdaDirected, lambdaNondirected, mu, tMax, thresholdList, seed,
+                FixedIntervalSampler.disabled());
+    }
+
+    private SARGillespieSimulator(DirectedGraph g, double lambdaDirected, double lambdaNondirected,
+            double mu, double tMax, int[] thresholdList, long seed,
+            FixedIntervalSampler intervalSampler) {
         if (g == null) throw new IllegalArgumentException("Directed graph must be non-null");
         if (lambdaDirected < 0 || lambdaNondirected < 0)
             throw new IllegalArgumentException("lambdaDirected and lambdaNondirected must be non-negative");
@@ -72,6 +80,7 @@ public final class SARGillespieSimulator {
         this.tMax = tMax;
         this.thresholdList = thresholdList;
         this.random = new Random(seed);
+        this.intervalSampler = intervalSampler;
 
         int n = g.n;
         int m = g.m;
@@ -150,6 +159,8 @@ public final class SARGillespieSimulator {
             t += dt;
             if (t >= tMax) break;
 
+            intervalSampler.recordBefore(t, this::record);
+
             // イベント選択
             double r = random.nextDouble() * totalRate;
             if (r < rateRecovery) {
@@ -172,7 +183,9 @@ public final class SARGillespieSimulator {
                 removeUndirEdge(edgeIdx);
                 processTransmit(target, t);
             }
+            intervalSampler.recordThrough(t, this::record);
         }
+        intervalSampler.recordRemaining(this::record);
 
         return new SARResult(n, times, S, A, R, Phi, initialAdoptedTime, finalAdoptedTime, tInfect, tRecover);
     }
@@ -186,7 +199,7 @@ public final class SARGillespieSimulator {
             if (status[target] == Status.S) {
                 Scount--;
                 Acount++;
-                record(t);
+                recordEvent(t);
 
                 if (initialAdoptedTime == 0) initialAdoptedTime = t;
                 finalAdoptedTime = t;
@@ -204,7 +217,7 @@ public final class SARGillespieSimulator {
     private void processRecover(int u, double t) {
         Acount--;
         Rcount++;
-        record(t);
+        recordEvent(t);
 
         status[u] = Status.R;
         tRecover[u] = t;
@@ -282,6 +295,12 @@ public final class SARGillespieSimulator {
         Phi.add(PhiCount);
     }
 
+    private void recordEvent(double t) {
+        if (!intervalSampler.isEnabled()) {
+            record(t);
+        }
+    }
+
     /**
      * SAR シミュレーション（Gillespie 方式）を実行する。
      *
@@ -299,5 +318,14 @@ public final class SARGillespieSimulator {
             double tMax, int[] thresholdList, int[] initialInfecteds, long seed) {
         return new SARGillespieSimulator(g, lambdaDirected, lambdaNondirected, mu, tMax, thresholdList, seed)
                 .run(initialInfecteds);
+    }
+
+    /**
+     * 固定間隔 dt で状態を記録しながらGillespie方式のSARシミュレーションを実行する。
+     */
+    public static SARResult simulate(DirectedGraph g, double lambdaDirected, double lambdaNondirected, double mu,
+            double tMax, double dt, int[] thresholdList, int[] initialInfecteds, long seed) {
+        return new SARGillespieSimulator(g, lambdaDirected, lambdaNondirected, mu, tMax, thresholdList, seed,
+                FixedIntervalSampler.create(dt, tMax)).run(initialInfecteds);
     }
 }

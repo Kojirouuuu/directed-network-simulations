@@ -47,6 +47,7 @@ public final class SARSimulator {
     private final double tMax; // シミュレーション終了時刻
     private final int[] thresholdList; // 各ノードの閾値リスト
     private final Random random; // 乱数ジェネレータ
+    private final FixedIntervalSampler intervalSampler;
 
     private final Status[] status; // 各ノードの状態
     private final double[] predInfTime; // 各ノードの予測感染時刻
@@ -81,6 +82,12 @@ public final class SARSimulator {
      */
     public SARSimulator(DirectedGraph g, double lambdaDirected, double lambdaNondirected, double mu, double tMax,
             int[] thresholdList, long seed) {
+        this(g, lambdaDirected, lambdaNondirected, mu, tMax, thresholdList, seed,
+                FixedIntervalSampler.disabled());
+    }
+
+    private SARSimulator(DirectedGraph g, double lambdaDirected, double lambdaNondirected, double mu, double tMax,
+            int[] thresholdList, long seed, FixedIntervalSampler intervalSampler) {
         if (g == null) throw new IllegalArgumentException("Directed graph must be non-null");
         if (lambdaDirected < 0 || lambdaNondirected < 0) throw new IllegalArgumentException("lambdaDirected and lambdaNondirected must be non-negative");
         if (tMax <= 0) throw new IllegalArgumentException("tMax must be positive");
@@ -93,6 +100,7 @@ public final class SARSimulator {
         this.tMax = tMax;
         this.thresholdList = thresholdList;
         this.random = new Random(seed);
+        this.intervalSampler = intervalSampler;
 
         int n = g.n;
         this.status = new Status[n];
@@ -190,21 +198,24 @@ public final class SARSimulator {
         record(0.0);
 
         while (!Q.isEmpty()) {
-            Event ev = Q.poll();
-            final int u = ev.node;
-            final double t = ev.time;
-
+            final double t = Q.peek().time;
             if (t >= tMax) break;
 
-            if (ev.type == EventType.TRANSMIT) {
-                processTransmit(u, t, Q, () -> seqGen.next());
-            } else {
-                // EventType.RECOVER
-                if (status[u] == Status.A && t == recTime[u]) {
+            intervalSampler.recordBefore(t, this::record);
+
+            // 同時刻のイベントをすべて処理してから、その時刻の格子点を記録する。
+            while (!Q.isEmpty() && Double.compare(Q.peek().time, t) == 0) {
+                Event ev = Q.poll();
+                final int u = ev.node;
+                if (ev.type == EventType.TRANSMIT) {
+                    processTransmit(u, t, Q, () -> seqGen.next());
+                } else if (status[u] == Status.A && t == recTime[u]) {
                     processRecover(u, t);
                 }
             }
+            intervalSampler.recordThrough(t, this::record);
         }
+        intervalSampler.recordRemaining(this::record);
 
         return new SARResult(n, times, S, A, R, Phi, initialAdoptedTime, finalAdoptedTime, tInfect, tRecover);
     }
@@ -224,7 +235,7 @@ public final class SARSimulator {
             if (status[u] == Status.S) {
                 Scount--;
                 Acount++;
-                record(t);
+                recordEvent(t);
 
                 if (initialAdoptedTime == 0) {
                     initialAdoptedTime = t;
@@ -295,7 +306,7 @@ public final class SARSimulator {
     private void processRecover(int u, double t) {
         Acount--;
         Rcount++;
-        record(t);
+        recordEvent(t);
 
         status[u] = Status.R;
         tRecover[u] = t;
@@ -333,6 +344,12 @@ public final class SARSimulator {
         R.add(Rcount);
         Phi.add(PhiCount);
     }
+
+    private void recordEvent(double t) {
+        if (!intervalSampler.isEnabled()) {
+            record(t);
+        }
+    }
     
     /**
      * SAR シミュレーションを実行する。
@@ -351,5 +368,14 @@ public final class SARSimulator {
             double tMax, int[] thresholdList, int[] initialInfecteds, long seed) {
         return new SARSimulator(g, lambdaDirected, lambdaNondirected, mu, tMax, thresholdList, seed)
                 .run(initialInfecteds);
+    }
+
+    /**
+     * 固定間隔 dt で状態を記録しながらSARシミュレーションを実行する。
+     */
+    public static SARResult simulate(DirectedGraph g, double lambdaDirected, double lambdaNondirected, double mu,
+            double tMax, double dt, int[] thresholdList, int[] initialInfecteds, long seed) {
+        return new SARSimulator(g, lambdaDirected, lambdaNondirected, mu, tMax, thresholdList, seed,
+                FixedIntervalSampler.create(dt, tMax)).run(initialInfecteds);
     }
 }

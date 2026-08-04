@@ -194,11 +194,24 @@ public class SAR {
 
         long simSeed = SIM_BASE_SEED + (long) batchIndex * config.itrs + itr;
 
-        SARResult res = config.useGillespie
-                ? SARGillespieSimulator.simulate(
-                        g, lambdaDirected, lambdaNondirected, config.mu, config.tMax, thresholdList, init, simSeed)
-                : SARSimulator.simulate(
-                        g, lambdaDirected, lambdaNondirected, config.mu, config.tMax, thresholdList, init, simSeed);
+        SARResult res;
+        if (config.useGillespie) {
+            res = config.isFinal
+                    ? SARGillespieSimulator.simulate(
+                            g, lambdaDirected, lambdaNondirected, config.mu, config.tMax,
+                            thresholdList, init, simSeed)
+                    : SARGillespieSimulator.simulate(
+                            g, lambdaDirected, lambdaNondirected, config.mu, config.tMax, config.dt,
+                            thresholdList, init, simSeed);
+        } else {
+            res = config.isFinal
+                    ? SARSimulator.simulate(
+                            g, lambdaDirected, lambdaNondirected, config.mu, config.tMax,
+                            thresholdList, init, simSeed)
+                    : SARSimulator.simulate(
+                            g, lambdaDirected, lambdaNondirected, config.mu, config.tMax, config.dt,
+                            thresholdList, init, simSeed);
+        }
 
         try {
             if (config.isFinal) {
@@ -312,6 +325,7 @@ public class SAR {
          */
         final boolean loadFromEdgeList = false;
         final boolean isFinal = true; // 最終状態のみ出力するか
+        final double dt = 0.1; // isFinal == false の時は dt 刻みで記録する。
         final int batchSize = 10; // バッチサイズ
         final int itrs = 20; // イテレーション数
         final double mu = 1.0; // 回復率
