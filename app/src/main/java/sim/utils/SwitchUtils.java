@@ -63,7 +63,7 @@ public final class SwitchUtils {
          * 使用されないパラメータは null でよい。ネットワークタイプに応じて必要なものだけ参照される。
          *
          * @param networkType ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-         *        PowPow, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter,
+         *        PowPow, DegreeDistributionSAR, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter,
          *        rev-ego-Twitter, gplus, rev-gplus, higgs-social, rev-higgs-social）
          * @param N 頂点数
          * @param kdAve DirectedCM 用（null 可）
@@ -72,13 +72,13 @@ public final class SwitchUtils {
          * @param kInMax DirectedCMInPow 用（null 可）
          * @param kOutMin DirectedCMOutPow 用（null 可）
          * @param kOutMax DirectedCMOutPow 用（null 可）
-         * @param kdMin PowPow 用（null 可）
-         * @param kdMax PowPow 用（null 可）
+         * @param kdMin PowPow, DegreeDistributionSAR 用（null 可）
+         * @param kdMax PowPow, DegreeDistributionSAR 用（null 可）
          * @param kuMin CM 用（null 可）
          * @param kuMax CM 用（null 可）
          * @param m0 DirectedBA 用（null 可）
          * @param m DirectedBA 用（null 可）
-         * @param gamma DirectedCMInPow, DirectedCMOutPow, PowPow 用（null 可）
+         * @param gamma DirectedCMInPow, DirectedCMOutPow, PowPow, DegreeDistributionSAR 用（null 可）
          * @param swapNum PowPow 用（null 可）
          * @param gammaIn SchwartzDirectedSF 用（null 可）
          * @param gammaOut SchwartzDirectedSF 用（null 可）
@@ -106,6 +106,10 @@ public final class SwitchUtils {
                                         requireNonNull(kdMin, "PowPow requires kdMin"),
                                         requireNonNull(kdMax, "PowPow requires kdMax"),
                                         requireNonNull(swapNum, "PowPow requires swapNum"));
+                        case "DegreeDistributionSAR" -> String.format("gamma=%.2f/kdMin=%d/kdMax=%d",
+                                        requireNonNull(gamma, "DegreeDistributionSAR requires gamma"),
+                                        requireNonNull(kdMin, "DegreeDistributionSAR requires kdMin"),
+                                        requireNonNull(kdMax, "DegreeDistributionSAR requires kdMax"));
                         case "SameInOut" -> String.format("gamma=%.2f/kdMin=%d/kdMax=%d",
                                         requireNonNull(gamma, "SameInOut requires gamma"),
                                         requireNonNull(kdMin, "SameInOut requires kdMin"),

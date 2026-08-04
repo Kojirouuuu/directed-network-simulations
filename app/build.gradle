@@ -50,6 +50,14 @@ task runSAR(type: JavaExec) {
     mainClass = 'sim.SAR'
 }
 
+// 入次数・出次数の Pow/Poi 4通りを比較するSAR実験
+task runDegreeDistributionSAR(type: JavaExec) {
+    group = 'application'
+    description = 'Runs the degree-distribution comparison SAR simulation'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'sim.DegreeDistributionSAR'
+}
+
 // GraphGen クラスを実行するカスタムタスク
 task runGraphGen(type: JavaExec) {
     group = 'application'

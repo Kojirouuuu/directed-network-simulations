@@ -41,16 +41,16 @@ def build_network_path(
 
     Args:
         network_type: ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-            PowPow, SameInOut, SchwartzDirectedSF, CM, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter, gplus, rev-gplus, higgs-social, rev-higgs-social）
+            PowPow, DegreeDistributionSAR, SameInOut, SchwartzDirectedSF, CM, ER, BA, DirectedBA, ego-Twitter, rev-ego-Twitter, gplus, rev-gplus, higgs-social, rev-higgs-social）
         N: 頂点数
         kd_ave: DirectedCM 用（None 可）
         ku_ave: ER 用（None 可）
         ku_min, ku_max: CM 用（None 可）
         k_in_min, k_in_max: DirectedCMInPow, SchwartzDirectedSF 用（None 可）
         k_out_min, k_out_max: DirectedCMOutPow, SchwartzDirectedSF 用（None 可）
-        kd_min, kd_max: PowPow, SameInOut 用（None 可）。CM では ku_min, ku_max として使用
+        kd_min, kd_max: PowPow, DegreeDistributionSAR, SameInOut 用（None 可）。CM では ku_min, ku_max として使用
         m0, m: DirectedBA, BA 用（None 可）
-        gamma: DirectedCMInPow, DirectedCMOutPow, PowPow, SameInOut 用（None 可）
+        gamma: DirectedCMInPow, DirectedCMOutPow, PowPow, DegreeDistributionSAR, SameInOut 用（None 可）
         swap_num: PowPow 用（None 可）
         gamma_in, gamma_out, corr_a: SchwartzDirectedSF 用（None 可）
 
@@ -79,6 +79,11 @@ def build_network_path(
         _require(gamma, "PowPow", "gamma")
         _require(swap_num, "PowPow", "swap_num")
         network_specific = f"gamma={gamma:.2f}/kdMin={kd_min}/kdMax={kd_max}/swapNum={swap_num}"
+    elif network_type == "DegreeDistributionSAR":
+        _require(kd_min, "DegreeDistributionSAR", "kd_min")
+        _require(kd_max, "DegreeDistributionSAR", "kd_max")
+        _require(gamma, "DegreeDistributionSAR", "gamma")
+        network_specific = f"gamma={gamma:.2f}/kdMin={kd_min}/kdMax={kd_max}"
     elif network_type == "SameInOut":
         _require(kd_min, "SameInOut", "kd_min")
         _require(kd_max, "SameInOut", "kd_max")
