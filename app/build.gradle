@@ -58,6 +58,14 @@ task runDegreeDistributionSAR(type: JavaExec) {
     mainClass = 'sim.DegreeDistributionSAR'
 }
 
+// ネットワーク生成パラメータと相互辺割合を比較するSAR実験
+task runNetworkSweepSAR(type: JavaExec) {
+    group = 'application'
+    description = 'Runs the network-parameter sweep SAR simulation'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'sim.NetworkSweepSAR'
+}
+
 // GraphGen クラスを実行するカスタムタスク
 task runGraphGen(type: JavaExec) {
     group = 'application'
