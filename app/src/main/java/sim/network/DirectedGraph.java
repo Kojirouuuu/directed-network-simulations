@@ -9,9 +9,13 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 /**
  * 有向グラフをCSR（Compressed Sparse Row）形式で表現するクラス。
@@ -153,6 +157,249 @@ public final class DirectedGraph {
                 outPtr,
                 outIdx,
                 outIsUndirected);
+    }
+
+    /**
+     * 逆向きの辺と対応する有向辺（相互アーク）の本数を返す。
+     * 多重辺については、頂点対ごとに両方向の本数の小さい方を対応付ける。
+     * 例えば u→v が3本、v→u が1本なら相互アークは2本と数える。
+     * 自己ループは相互アークに含めない。
+     *
+     * @return 相互アーク数
+     */
+    public int countReciprocalArcs() {
+        return countReciprocalArcs(buildEdgeCounts());
+    }
+
+    /**
+     * 全アークに占める相互アークの割合を返す。
+     *
+     * @return 相互アーク数 / m。空グラフでは 0.0
+     */
+    public double reciprocity() {
+        return m == 0 ? 0.0 : countReciprocalArcs() / (double) m;
+    }
+
+    /**
+     * 入次数・出次数を保存する辺スワップにより、相互辺割合を目標値まで増加させる。
+     * 目標到達後は、相互アーク数が変化しないスワップを繰り返して偏りを緩和する。
+     * 元のグラフは変更しない。
+     *
+     * <p>辺 a→b と c→d に対し、a→d と c→b への交換を提案する。新たな自己ループ・
+     * 多重辺になる提案は棄却する。既存の自己ループ・多重辺は入力として許容する。</p>
+     *
+     * @param targetReciprocity 目標相互辺割合（0以上1以下）
+     * @param maxIncreaseAttempts 相互辺を増加させる候補の最大試行回数
+     * @param neutralSwapAttempts 相互辺数を保存する候補の試行回数
+     * @param seed 乱数シード
+     * @return リワイヤリング後の新しい DirectedGraph
+     * @throws IllegalArgumentException 引数が不正、または無向由来辺を含む場合
+     * @throws IllegalStateException 最大試行回数内に目標へ到達できなかった場合
+     */
+    public DirectedGraph increaseReciprocity(double targetReciprocity, int maxIncreaseAttempts,
+            int neutralSwapAttempts, long seed) {
+        if (!Double.isFinite(targetReciprocity) || targetReciprocity < 0.0 || targetReciprocity > 1.0) {
+            throw new IllegalArgumentException("targetReciprocity must be finite and in [0, 1]");
+        }
+        if (maxIncreaseAttempts < 0) {
+            throw new IllegalArgumentException("maxIncreaseAttempts must be non-negative");
+        }
+        if (neutralSwapAttempts < 0) {
+            throw new IllegalArgumentException("neutralSwapAttempts must be non-negative");
+        }
+        for (boolean isUndirected : outIsUndirected) {
+            if (isUndirected) {
+                throw new IllegalArgumentException("increaseReciprocity requires a purely directed graph");
+            }
+        }
+
+        int[] srcs = new int[m];
+        int[] dsts = new int[m];
+        int edgeIndex = 0;
+        for (int u = 0; u < n; u++) {
+            for (int i = outPtr[u]; i < outPtr[u + 1]; i++) {
+                srcs[edgeIndex] = u;
+                dsts[edgeIndex] = outIdx[i];
+                edgeIndex++;
+            }
+        }
+
+        Map<Long, Integer> edgeCounts = buildEdgeCounts(srcs, dsts);
+        int reciprocalArcs = countReciprocalArcs(edgeCounts);
+        Random random = new Random(seed);
+
+        int attempts = 0;
+        while (!hasReachedTarget(reciprocalArcs, targetReciprocity) && attempts < maxIncreaseAttempts) {
+            reciprocalArcs = tryDegreePreservingSwap(
+                    srcs, dsts, edgeCounts, reciprocalArcs, random, true);
+            attempts++;
+        }
+
+        if (!hasReachedTarget(reciprocalArcs, targetReciprocity)) {
+            double achieved = m == 0 ? 0.0 : reciprocalArcs / (double) m;
+            throw new IllegalStateException(
+                    "Could not reach target reciprocity " + targetReciprocity
+                            + " in " + maxIncreaseAttempts + " attempts; achieved " + achieved);
+        }
+
+        for (int attempt = 0; attempt < neutralSwapAttempts; attempt++) {
+            reciprocalArcs = tryDegreePreservingSwap(
+                    srcs, dsts, edgeCounts, reciprocalArcs, random, false);
+        }
+
+        return fromEdgeListWithUndirectedFlag(
+                name + "_reciprocity", n, srcs, dsts, new boolean[m]);
+    }
+
+    private boolean hasReachedTarget(int reciprocalArcs, double targetReciprocity) {
+        if (m == 0) {
+            return targetReciprocity == 0.0;
+        }
+        return reciprocalArcs / (double) m >= targetReciprocity;
+    }
+
+    private static int tryDegreePreservingSwap(int[] srcs, int[] dsts, Map<Long, Integer> edgeCounts,
+            int reciprocalArcs, Random random, boolean requireIncrease) {
+        int edgeCount = srcs.length;
+        if (edgeCount < 2) {
+            return reciprocalArcs;
+        }
+
+        int first = random.nextInt(edgeCount);
+        int second = random.nextInt(edgeCount - 1);
+        if (second >= first) {
+            second++;
+        }
+
+        int a = srcs[first];
+        int b = dsts[first];
+        int c = srcs[second];
+        int d = dsts[second];
+
+        if (a == d || c == b || a == c || b == d) {
+            return reciprocalArcs;
+        }
+
+        long oldFirst = edgeKey(a, b);
+        long oldSecond = edgeKey(c, d);
+        long newFirst = edgeKey(a, d);
+        long newSecond = edgeKey(c, b);
+        if (newFirst == newSecond) {
+            return reciprocalArcs;
+        }
+
+        Set<Long> affectedDyads = new HashSet<>();
+        affectedDyads.add(dyadKey(a, b));
+        affectedDyads.add(dyadKey(c, d));
+        affectedDyads.add(dyadKey(a, d));
+        affectedDyads.add(dyadKey(c, b));
+        int before = reciprocalContribution(edgeCounts, affectedDyads);
+
+        decrementEdgeCount(edgeCounts, oldFirst);
+        decrementEdgeCount(edgeCounts, oldSecond);
+
+        if (edgeCounts.containsKey(newFirst) || edgeCounts.containsKey(newSecond)) {
+            incrementEdgeCount(edgeCounts, oldFirst);
+            incrementEdgeCount(edgeCounts, oldSecond);
+            return reciprocalArcs;
+        }
+
+        incrementEdgeCount(edgeCounts, newFirst);
+        incrementEdgeCount(edgeCounts, newSecond);
+        int after = reciprocalContribution(edgeCounts, affectedDyads);
+        int updatedReciprocalArcs = reciprocalArcs + after - before;
+        boolean accept = requireIncrease
+                ? updatedReciprocalArcs > reciprocalArcs
+                : updatedReciprocalArcs == reciprocalArcs;
+
+        if (!accept) {
+            decrementEdgeCount(edgeCounts, newFirst);
+            decrementEdgeCount(edgeCounts, newSecond);
+            incrementEdgeCount(edgeCounts, oldFirst);
+            incrementEdgeCount(edgeCounts, oldSecond);
+            return reciprocalArcs;
+        }
+
+        dsts[first] = d;
+        dsts[second] = b;
+        return updatedReciprocalArcs;
+    }
+
+    private Map<Long, Integer> buildEdgeCounts() {
+        Map<Long, Integer> edgeCounts = new HashMap<>();
+        for (int u = 0; u < n; u++) {
+            for (int i = outPtr[u]; i < outPtr[u + 1]; i++) {
+                incrementEdgeCount(edgeCounts, edgeKey(u, outIdx[i]));
+            }
+        }
+        return edgeCounts;
+    }
+
+    private static Map<Long, Integer> buildEdgeCounts(int[] srcs, int[] dsts) {
+        Map<Long, Integer> edgeCounts = new HashMap<>();
+        for (int i = 0; i < srcs.length; i++) {
+            incrementEdgeCount(edgeCounts, edgeKey(srcs[i], dsts[i]));
+        }
+        return edgeCounts;
+    }
+
+    private static int countReciprocalArcs(Map<Long, Integer> edgeCounts) {
+        int reciprocalArcs = 0;
+        for (Map.Entry<Long, Integer> entry : edgeCounts.entrySet()) {
+            int u = sourceFromKey(entry.getKey());
+            int v = destinationFromKey(entry.getKey());
+            if (u < v) {
+                reciprocalArcs += 2 * Math.min(
+                        entry.getValue(), edgeCounts.getOrDefault(edgeKey(v, u), 0));
+            }
+        }
+        return reciprocalArcs;
+    }
+
+    private static int reciprocalContribution(Map<Long, Integer> edgeCounts, Set<Long> dyads) {
+        int contribution = 0;
+        for (long dyad : dyads) {
+            int u = sourceFromKey(dyad);
+            int v = destinationFromKey(dyad);
+            if (u != v) {
+                contribution += 2 * Math.min(
+                        edgeCounts.getOrDefault(edgeKey(u, v), 0),
+                        edgeCounts.getOrDefault(edgeKey(v, u), 0));
+            }
+        }
+        return contribution;
+    }
+
+    private static void incrementEdgeCount(Map<Long, Integer> edgeCounts, long key) {
+        edgeCounts.merge(key, 1, Integer::sum);
+    }
+
+    private static void decrementEdgeCount(Map<Long, Integer> edgeCounts, long key) {
+        int count = edgeCounts.getOrDefault(key, 0);
+        if (count <= 0) {
+            throw new IllegalStateException("Cannot remove an edge that does not exist");
+        }
+        if (count == 1) {
+            edgeCounts.remove(key);
+        } else {
+            edgeCounts.put(key, count - 1);
+        }
+    }
+
+    private static long edgeKey(int source, int destination) {
+        return ((long) source << 32) | (destination & 0xffffffffL);
+    }
+
+    private static long dyadKey(int first, int second) {
+        return edgeKey(Math.min(first, second), Math.max(first, second));
+    }
+
+    private static int sourceFromKey(long key) {
+        return (int) (key >>> 32);
+    }
+
+    private static int destinationFromKey(long key) {
+        return (int) key;
     }
 
     /**
