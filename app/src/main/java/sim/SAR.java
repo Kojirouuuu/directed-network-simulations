@@ -295,8 +295,8 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "DirectedCMOutPow"; // ネットワークタイプ
-        final String optionPath = "dis"; // オプションパス
+        final String networkType = "PowPow"; // ネットワークタイプ
+        final String optionPath = "time-series"; // オプションパス
         final int N = 500_000; // 頂点数
         final int kdMin = 5; // 最小次数
         final int kdMax = (int) Math.sqrt(N); // 最大次数
@@ -324,32 +324,32 @@ public class SAR {
          * で生成したファイル）
          */
         final boolean loadFromEdgeList = false;
-        final boolean isFinal = true; // 最終状態のみ出力するか
+        final boolean isFinal = false; // 最終状態のみ出力するか
         final double dt = 0.1; // isFinal == false の時は dt 刻みで記録する。
         final int batchSize = 10; // バッチサイズ
         final int itrs = 20; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
-        final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = Double.MAX_VALUE;
-        final double lambdaDirectedStep = Double.MAX_VALUE / 100.0;
+        // final double lambdaDirectedMin = 0.0;
+        // final double lambdaDirectedMax = Double.MAX_VALUE;
+        // final double lambdaDirectedStep = Double.MAX_VALUE / 100.0;
         // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
         // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
         final double[] lambdaDirectedList = { 2.0 };
 
-        final double lambdaNondirectedMin = 0.0;
-        final double lambdaNondirectedMax = 2.0;
-        final double lambdaNondirectedStep = 0.02;
+        // final double lambdaNondirectedMin = 0.0;
+        // final double lambdaNondirectedMax = 2.0;
+        // final double lambdaNondirectedStep = 0.02;
         // final double[] lambdaNondirectedList =
         // ArrayUtils.arange(lambdaNondirectedMin, lambdaNondirectedMax,
         // lambdaNondirectedStep); // 無向辺の感染率
         final double[] lambdaNondirectedList = { 0.0 };
 
-        final double rho0Min = 0.0;
-        final double rho0Max = 0.5;
-        final double rho0Step = 0.005;
-        final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step); //
-        // final double[] rho0List = { 0.0015 }; // 初期感染率のリスト
+        // final double rho0Min = 0.0;
+        // final double rho0Max = 0.5;
+        // final double rho0Step = 0.005;
+        // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step);
+        final double[] rho0List = { 0.1 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
         final boolean useGillespie = false; // true: Gillespie方式, false: イベント駆動方式
     }
