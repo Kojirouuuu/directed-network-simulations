@@ -99,6 +99,28 @@ class DirectedGraphTest {
     }
 
     @Test
+    void acceptsIncreaseAttemptBudgetLargerThanIntegerMaxValue() {
+        DirectedGraph graph = graph(2, new int[] { 0, 1 }, new int[] { 1, 0 });
+
+        DirectedGraph unchanged = graph.increaseReciprocity(
+                1.0, (long) Integer.MAX_VALUE + 1L, 0L, 1L);
+
+        assertEquals(1.0, unchanged.reciprocity());
+    }
+
+    @Test
+    void rejectsBudgetBelowTheoreticalMinimumBeforeTryingSwaps() {
+        DirectedGraph graph = graph(4,
+                new int[] { 0, 1, 2, 3 },
+                new int[] { 1, 2, 3, 0 });
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> graph.increaseReciprocity(1.0, 0L, 0L, 1L));
+
+        assertTrue(exception.getMessage().contains("theoretically required"));
+    }
+
+    @Test
     void emptyGraphHasZeroReciprocity() {
         DirectedGraph graph = graph(3, new int[0], new int[0]);
 
