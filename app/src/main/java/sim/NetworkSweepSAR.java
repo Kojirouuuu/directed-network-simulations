@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -25,7 +26,7 @@ import sim.utils.PathsEx;
 import sim.utils.SwitchUtils;
 
 /**
- * ネットワーク生成パラメータと相互辺割合を変えながらSAR実験を行う。
+ * ネットワーク生成パラメータと相互辺割合を変えながら、ネットワーク生成とSAR実験を行う。
  * 設定は {@link SimulationConfig} の配列をソース上で編集する。
  */
 public final class NetworkSweepSAR {
@@ -53,7 +54,7 @@ public final class NetworkSweepSAR {
                 * config.lambdaDirectedList.length * config.lambdaNondirectedList.length;
 
         System.out.println("Total tasks: " + totalTasks);
-        System.out.println(config.networkType + ": N=" + config.N + ", itrs=" + config.itrs);
+        System.out.println(config.networkType + ": N=" + config.N + ", batches=" + config.batchSize);
 
         int parallelism = Runtime.getRuntime().availableProcessors();
         System.out.println("Parallelism: " + parallelism + " (available processors)");
@@ -87,16 +88,16 @@ public final class NetworkSweepSAR {
                     resultsPath = prepareOutputPath(baseGraph.n, batchIndex, config);
                 }
 
-                int maxIncreaseAttempts = scaledAttempts(
+                long maxIncreaseAttempts = scaledAttempts(
                         baseGraph.m, config.maxIncreaseAttemptsPerEdge, "maxIncreaseAttempts");
-                int neutralSwapAttempts = scaledAttempts(
+                long neutralSwapAttempts = scaledAttempts(
                         baseGraph.m, config.neutralSwapAttemptsPerEdge, "neutralSwapAttempts");
                 double baseReciprocity = baseGraph.reciprocity();
 
                 for (double targetReciprocity : config.targetReciprocityList) {
-                    int neutralAttemptsForTarget = targetReciprocity > baseReciprocity
+                    long neutralAttemptsForTarget = targetReciprocity > baseReciprocity
                             ? neutralSwapAttempts
-                            : 0;
+                            : 0L;
                     DirectedGraph graph = baseGraph.increaseReciprocity(
                             targetReciprocity,
                             maxIncreaseAttempts,
@@ -104,12 +105,46 @@ public final class NetworkSweepSAR {
                             RECIPROCITY_BASE_SEED + batchIndex);
                     double actualReciprocity = graph.reciprocity();
 
+                    Path edgeListPath = buildEdgeListPath(
+                            graph, config, gamma, swapNum, targetReciprocity, batchIndex);
+                    try {
+                        graph.writeEdgeList(edgeListPath);
+                    } catch (IOException e) {
+                        throw new RuntimeException(
+                                "Edge-list output error (batch=" + batchIndex
+                                        + ", gamma=" + gamma + ", swapNum=" + swapNum
+                                        + ", targetReciprocity=" + targetReciprocity + ")",
+                                e);
+                    }
+
+                    synchronized (System.out) {
+                        System.out.printf(Locale.ROOT,
+                                "%nGenerated %s (target_r=%.6f, actual_r=%.6f)%n",
+                                edgeListPath, targetReciprocity, actualReciprocity);
+                    }
                     runAllSimulations(
                             graph, config, gamma, swapNum, targetReciprocity, actualReciprocity,
                             gammaApplicable, swapApplicable, batchIndex, resultsPath, done);
                 }
             }
         }
+    }
+
+    private static Path buildEdgeListPath(
+            DirectedGraph graph, SimulationConfig config, double gamma, int swapNum,
+            double targetReciprocity, int batchIndex) {
+        Path networkPath = SwitchUtils.buildNetworkPath(
+                config.networkType, graph.n,
+                config.kdAve, config.kuAve,
+                config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
+                usesGamma(config.networkType) ? gamma : null,
+                usesSwapNum(config.networkType) ? swapNum : null,
+                config.gammaIn, config.gammaOut, config.corrA);
+        return Paths.get("out/edgelist")
+                .resolve(networkPath)
+                .resolve(String.format(Locale.ROOT, "reciprocity=%.6f", targetReciprocity))
+                .resolve(batchIndex + ".csv");
     }
 
     private static DirectedGraph generateBaseGraph(
@@ -303,19 +338,14 @@ public final class NetworkSweepSAR {
         }
     }
 
-    static int scaledAttempts(int edgeCount, int attemptsPerEdge, String parameterName) {
+    static long scaledAttempts(int edgeCount, int attemptsPerEdge, String parameterName) {
         if (edgeCount < 0) {
             throw new IllegalArgumentException("edgeCount must be non-negative");
         }
         if (attemptsPerEdge < 0) {
             throw new IllegalArgumentException(parameterName + "PerEdge must be non-negative");
         }
-        long attempts = (long) edgeCount * attemptsPerEdge;
-        if (attempts > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException(
-                    parameterName + " exceeds Integer.MAX_VALUE: " + attempts);
-        }
-        return (int) attempts;
+        return Math.multiplyExact((long) edgeCount, attemptsPerEdge);
     }
 
     private static void validateSimulationConfig(SimulationConfig config) {
@@ -407,9 +437,9 @@ public final class NetworkSweepSAR {
 
         final double[] gammaList = { 2.5 };
         final int[] swapNumList = { 0 };
-        final double[] targetReciprocityList = { 0.0 };
-        final int maxIncreaseAttemptsPerEdge = 100;
-        final int neutralSwapAttemptsPerEdge = 10;
+        final double[] targetReciprocityList = { 0.00, 0.0001, 0.001, 0.01 };
+        final int maxIncreaseAttemptsPerEdge = 200;
+        final int neutralSwapAttemptsPerEdge = 1;
 
         final boolean isFinal = true;
         final int batchSize = 10;
@@ -420,7 +450,7 @@ public final class NetworkSweepSAR {
         final double[] lambdaNondirectedList = { 0.0 };
         final double rho0Min = 0.0;
         final double rho0Max = 0.1;
-        final double rho0Step = 0.001;
+        final double rho0Step = 0.002;
         final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step);
         final int threshold = 3;
         final boolean useGillespie = false;

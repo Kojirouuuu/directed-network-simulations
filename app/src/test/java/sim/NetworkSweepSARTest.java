@@ -41,10 +41,10 @@ class NetworkSweepSARTest {
     }
 
     @Test
-    void scalesAttemptBudgetsAndRejectsOverflow() {
-        assertEquals(1_000, NetworkSweepSAR.scaledAttempts(100, 10, "testAttempts"));
-        assertThrows(IllegalArgumentException.class,
-                () -> NetworkSweepSAR.scaledAttempts(Integer.MAX_VALUE, 2, "testAttempts"));
+    void scalesAttemptBudgetsBeyondIntegerRange() {
+        assertEquals(1_000L, NetworkSweepSAR.scaledAttempts(100, 10, "testAttempts"));
+        assertEquals(2L * Integer.MAX_VALUE,
+                NetworkSweepSAR.scaledAttempts(Integer.MAX_VALUE, 2, "testAttempts"));
         assertThrows(IllegalArgumentException.class,
                 () -> NetworkSweepSAR.scaledAttempts(100, -1, "testAttempts"));
     }
