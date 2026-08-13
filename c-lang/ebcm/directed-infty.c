@@ -426,7 +426,7 @@ int main(void) {
     };
     double mu = 1.0;
 
-    const int T_list[] = {3};
+    const int T_list[] = {2, 3};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
