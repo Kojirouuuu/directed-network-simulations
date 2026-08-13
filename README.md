@@ -221,6 +221,10 @@ DirectedGraph cmBasic = DirectedCM.generate("DirectedCM", 1000, 10, 1234567890L)
 // --- Erdős-Rényi モデル（全辺無向） ---
 // N=10000, 平均次数6.0, シード42
 DirectedGraph erGraph = ER.generateERFromKAve(10000, 6.0, 42L);
+
+// --- Erdős-Rényi モデル（有向） ---
+// 期待平均入次数・出次数6.0、シード42
+DirectedGraph directedErGraph = DirectedER.generateFromMeanDegree(10000, 6.0, 42L);
 ```
 
 #### 2. エッジリストから直接生成する
@@ -512,6 +516,20 @@ DirectedGraph gFromP = ER.generateERFromP(10000, 0.001, 42L);
 
 // 平均次数指定
 DirectedGraph gFromK = ER.generateERFromKAve(10000, 6.0, 42L);
+```
+
+### 有向 Erdős-Rényi モデル（`DirectedER`）
+
+自己ループを除く各順序付き頂点対 `u -> v` を独立に確率 `p` で結びます。
+自己ループと多重辺は生成しません。入次数・出次数は厳密には
+`Binomial(N - 1, p)` に従い、疎な場合に平均 `(N - 1) * p` のポアソン分布へ近似します。
+
+```java
+// 順序付き頂点対ごとの確率を指定
+DirectedGraph gFromP = DirectedER.generateFromP(10000, 0.001, 42L);
+
+// 期待平均入次数および出次数を指定
+DirectedGraph gFromK = DirectedER.generateFromMeanDegree(10000, 6.0, 42L);
 ```
 
 ### 実ネットワーク（ego-Twitter / gplus / higgs-social）

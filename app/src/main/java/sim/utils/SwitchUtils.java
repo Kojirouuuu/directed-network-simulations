@@ -5,6 +5,7 @@ import sim.network.topology.DirectedBA;
 import sim.network.topology.DirectedCM;
 import sim.network.topology.DirectedCMInPow;
 import sim.network.topology.DirectedCMOutPow;
+import sim.network.topology.DirectedER;
 import sim.network.topology.EgoTwitter;
 import sim.network.topology.Gplus;
 import sim.network.topology.HiggsSocial;
@@ -63,11 +64,11 @@ public final class SwitchUtils {
          * 使用されないパラメータは null でよい。ネットワークタイプに応じて必要なものだけ参照される。
          *
          * @param networkType ネットワークタイプ（DirectedCM, DirectedCMInPow, DirectedCMOutPow,
-         *        PowPow, DegreeDistributionSAR, SameInOut, CM, ER, BA, DirectedBA, ego-Twitter,
+         *        PowPow, DegreeDistributionSAR, SameInOut, CM, ER, DirectedER, BA, DirectedBA, ego-Twitter,
          *        rev-ego-Twitter, gplus, rev-gplus, higgs-social, rev-higgs-social）
          * @param N 頂点数
          * @param kdAve DirectedCM 用（null 可）
-         * @param kuAve ER 用（null 可）
+         * @param kuAve ER, DirectedER 用（null 可）
          * @param kInMin DirectedCMInPow 用（null 可）
          * @param kInMax DirectedCMInPow 用（null 可）
          * @param kOutMin DirectedCMOutPow 用（null 可）
@@ -128,6 +129,8 @@ public final class SwitchUtils {
                                         requireNonNull(kuMin, "CM requires kuMin"),
                                         requireNonNull(kuMax, "CM requires kuMax"));
                         case "ER" -> String.format("kuAve=%.2f", requireNonNull(kuAve, "ER requires kuAve"));
+                        case "DirectedER" -> String.format("kAve=%.2f",
+                                        requireNonNull(kuAve, "DirectedER requires kuAve"));
                         case "DirectedBA", "BA" -> String.format("m0=%d/m=%d", requireNonNull(m0, "BA requires m0"),
                                         requireNonNull(m, "BA requires m"));
                         case "ego-Twitter" -> ""; // N は無視。ファイルから読み込むためパラメータ不要
@@ -208,7 +211,7 @@ public final class SwitchUtils {
          * @param kInMax DirectedCMInPow 用（null 可）
          * @param kOutMin DirectedCMOutPow 用（null 可）
          * @param kOutMax DirectedCMOutPow 用（null 可）
-         * @param kuAve 平均次数（DirectedCMInPow, DirectedCMOutPow, ER）
+         * @param kuAve 平均次数（DirectedCMInPow, DirectedCMOutPow, ER, DirectedER）
          * @param gamma DirectedCMInPow, DirectedCMOutPow, PowPow, SameInOut, CM 用（null
          *        可）
          * @param kuMin CM 用（null 可）
@@ -259,6 +262,8 @@ public final class SwitchUtils {
                                         requireNonNull(params.gamma(), "DirectedCMOutPow requires gamma"), seed);
                         case "ER" -> ER.generateERFromKAve(N, requireNonNull(params.kuAve(), "ER requires kuAve"),
                                         seed);
+                        case "DirectedER" -> DirectedER.generateFromMeanDegree(N,
+                                        requireNonNull(params.kuAve(), "DirectedER requires kuAve"), seed);
                         case "DirectedBA" -> DirectedBA.generate(name, N,
                                         requireNonNull(params.m0(), "DirectedBA requires m0"),
                                         requireNonNull(params.m(), "DirectedBA requires m"), seed);
@@ -368,6 +373,11 @@ public final class SwitchUtils {
                 public static GraphGeneratorParams forER(int N, Double kuAve) {
                         return new GraphGeneratorParams("ER", N, null, null, null, null, null, null, null, kuAve, null,
                                         null, null, null, null, null, null, null, null);
+                }
+
+                public static GraphGeneratorParams forDirectedER(int N, Double meanDegree) {
+                        return new GraphGeneratorParams("DirectedER", N, null, null, null, null, null, null, null,
+                                        meanDegree, null, null, null, null, null, null, null, null, null);
                 }
 
                 public static GraphGeneratorParams forBA(int N, int m0, int m) {

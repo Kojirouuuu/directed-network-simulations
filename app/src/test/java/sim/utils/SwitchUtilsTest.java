@@ -1,6 +1,7 @@
 package sim.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
@@ -8,6 +9,37 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class SwitchUtilsTest {
+
+    @Test
+    void buildsAndGeneratesDirectedEr() {
+        Path path = SwitchUtils.buildNetworkPath(
+                "DirectedER", 1_000,
+                null, 6.0, null, null, null, null,
+                null, null, null, null, null, null,
+                null, null, null, null, null);
+
+        assertEquals(Path.of("DirectedER/N=1000/kAve=6.00"), path);
+
+        var graph = SwitchUtils.generateGraph(
+                SwitchUtils.GraphGeneratorParams.forDirectedER(1_000, 6.0), 42L);
+        assertEquals("DirectedER", graph.name);
+        assertEquals(1_000, graph.n);
+        for (int edge = 0; edge < graph.m; edge++) {
+            assertFalse(graph.isOutUndirected(edge));
+        }
+    }
+
+    @Test
+    void directedErRequiresMeanDegree() {
+        assertThrows(IllegalArgumentException.class, () -> SwitchUtils.buildNetworkPath(
+                "DirectedER", 100,
+                null, null, null, null, null, null,
+                null, null, null, null, null, null,
+                null, null, null, null, null));
+
+        assertThrows(IllegalArgumentException.class, () -> SwitchUtils.generateGraph(
+                SwitchUtils.GraphGeneratorParams.forDirectedER(100, null), 42L));
+    }
 
     @Test
     void buildsDegreeDistributionSarPath() {
