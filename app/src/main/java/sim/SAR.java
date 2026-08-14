@@ -29,6 +29,7 @@ public class SAR {
     private static final long RNG_BASE_SEED = 7L; // 乱数生成用のベースシード（閾値リスト・ノードシャッフル用）
     private static final long SIM_BASE_SEED = 12345L; // シミュレーション用のベースシード
     private static final long GRAPH_BASE_SEED = 42L; // グラフ生成用のベースシード
+    private static final long RANDOM_SWAP_BASE_SEED = 4242L; // ランダム辺スワップ用のベースシード
 
     // シードオフセット（異なる目的で異なるシードを生成するため）
     private static final long SEED_OFFSET_NODES = 2000L; // ノードシャッフル用オフセット
@@ -111,6 +112,10 @@ public class SAR {
                     config.gammaIn, config.gammaOut, config.corrA,
                     GRAPH_BASE_SEED + batchIndex);
             resultsPath = prepareOutputPath(g, batchIndex, config);
+        }
+
+        if (config.randomizeByEdgeSwaps) {
+            g = g.randomizeByEdgeSwaps(RANDOM_SWAP_BASE_SEED + batchIndex);
         }
 
         for (int itr = 0; itr < config.itrs; itr++) {
@@ -295,8 +300,8 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
-        final String networkType = "PowPow"; // ネットワークタイプ
-        final String optionPath = "time-series"; // オプションパス
+        final String networkType = "rev-higgs-social"; // ネットワークタイプ
+        final String optionPath = "random-test"; // オプションパス
         final int N = 500_000; // 頂点数
         final int kdMin = 5; // 最小次数
         final int kdMax = (int) Math.sqrt(N); // 最大次数
@@ -324,10 +329,11 @@ public class SAR {
          * で生成したファイル）
          */
         final boolean loadFromEdgeList = false;
-        final boolean isFinal = false; // 最終状態のみ出力するか
+        final boolean randomizeByEdgeSwaps = true; // シミュレーション前に次数保存ランダム辺スワップを行うか
+        final boolean isFinal = true; // 最終状態のみ出力するか
         final double dt = 0.1; // isFinal == false の時は dt 刻みで記録する。
         final int batchSize = 10; // バッチサイズ
-        final int itrs = 20; // イテレーション数
+        final int itrs = 2; // イテレーション数
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
         // final double lambdaDirectedMin = 0.0;
@@ -335,7 +341,7 @@ public class SAR {
         // final double lambdaDirectedStep = Double.MAX_VALUE / 100.0;
         // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
         // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        final double[] lambdaDirectedList = { 2.0 };
+        final double[] lambdaDirectedList = { 0.1, 0.2, 1.0, 2.0, 5.0 };
 
         // final double lambdaNondirectedMin = 0.0;
         // final double lambdaNondirectedMax = 2.0;
@@ -345,11 +351,12 @@ public class SAR {
         // lambdaNondirectedStep); // 無向辺の感染率
         final double[] lambdaNondirectedList = { 0.0 };
 
-        // final double rho0Min = 0.0;
-        // final double rho0Max = 0.5;
-        // final double rho0Step = 0.005;
-        // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step);
-        final double[] rho0List = { 0.1 }; // 初期感染率のリスト
+        final double rho0Min = 1.0e-5;
+        final double rho0Max = 2.0e-1;
+        final double rho0Step = 0.0005;
+        final int rho0Count = 50;
+        final double[] rho0List = ArrayUtils.geomspace(rho0Min, rho0Max, rho0Count);
+        // final double[] rho0List = { 0.1 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
         final boolean useGillespie = false; // true: Gillespie方式, false: イベント駆動方式
     }
