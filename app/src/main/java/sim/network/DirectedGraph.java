@@ -347,6 +347,65 @@ public final class DirectedGraph {
                 name + "_reciprocity", n, srcs, dsts, new boolean[m]);
     }
 
+    /**
+     * 入次数・出次数を保存するランダムな辺スワップにより、グラフをランダム化する。
+     * 元のグラフは変更しない。
+     *
+     * <p>辺 a→b と c→d に対し、a→d と c→b への交換を提案し、指標による
+     * 採択条件を設けず、構造的に有効な交換をすべて採択する。新たな自己ループ・
+     * 多重辺になる提案は棄却する。既存の自己ループ・多重辺は入力として許容する。</p>
+     *
+     * <p>成功した交換が辺数の10倍に達するまで試行する。辺数の100倍の試行でも
+     * 目標に達しない場合は例外を送出する。</p>
+     *
+     * @param seed 乱数シード
+     * @return ランダム化後の新しい DirectedGraph
+     * @throws IllegalArgumentException 無向由来辺を含む場合
+     * @throws IllegalStateException 試行上限内に必要な交換回数へ到達できなかった場合
+     */
+    public DirectedGraph randomizeByEdgeSwaps(long seed) {
+        for (boolean isUndirected : outIsUndirected) {
+            if (isUndirected) {
+                throw new IllegalArgumentException("randomizeByEdgeSwaps requires a purely directed graph");
+            }
+        }
+
+        int[] srcs = new int[m];
+        int[] dsts = new int[m];
+        int edgeIndex = 0;
+        for (int source = 0; source < n; source++) {
+            for (int edge = outPtr[source]; edge < outPtr[source + 1]; edge++) {
+                srcs[edgeIndex] = source;
+                dsts[edgeIndex] = outIdx[edge];
+                edgeIndex++;
+            }
+        }
+
+        Map<Long, Integer> edgeCounts = buildEdgeCounts(srcs, dsts);
+        Random random = new Random(seed);
+        long targetAcceptedSwaps = 10L * m;
+        long maxAttempts = 100L * m;
+        long attempts = 0L;
+        long acceptedSwaps = 0L;
+
+        while (acceptedSwaps < targetAcceptedSwaps && attempts < maxAttempts) {
+            if (tryRandomDegreePreservingSwap(srcs, dsts, edgeCounts, random)) {
+                acceptedSwaps++;
+            }
+            attempts++;
+        }
+
+        if (acceptedSwaps < targetAcceptedSwaps) {
+            throw new IllegalStateException(
+                    "Could not complete " + targetAcceptedSwaps
+                            + " random edge swaps in " + attempts + " attempts; accepted "
+                            + acceptedSwaps);
+        }
+
+        return fromEdgeListWithUndirectedFlag(
+                name + "_randomized", n, srcs, dsts, new boolean[m]);
+    }
+
     private boolean hasReachedTarget(int reciprocalArcs, double targetReciprocity) {
         if (m == 0) {
             return targetReciprocity == 0.0;
@@ -422,6 +481,46 @@ public final class DirectedGraph {
         dsts[first] = d;
         dsts[second] = b;
         return updatedReciprocalArcs;
+    }
+
+    private static boolean tryRandomDegreePreservingSwap(
+            int[] srcs, int[] dsts, Map<Long, Integer> edgeCounts, Random random) {
+        int edgeCount = srcs.length;
+        if (edgeCount < 2) {
+            return false;
+        }
+
+        int first = random.nextInt(edgeCount);
+        int second = random.nextInt(edgeCount - 1);
+        if (second >= first) {
+            second++;
+        }
+
+        int a = srcs[first];
+        int b = dsts[first];
+        int c = srcs[second];
+        int d = dsts[second];
+        if (a == d || c == b || a == c || b == d) {
+            return false;
+        }
+
+        long oldFirst = edgeKey(a, b);
+        long oldSecond = edgeKey(c, d);
+        long newFirst = edgeKey(a, d);
+        long newSecond = edgeKey(c, b);
+        if (newFirst == newSecond
+                || edgeCountAfterRemoval(edgeCounts, newFirst, oldFirst, oldSecond) > 0
+                || edgeCountAfterRemoval(edgeCounts, newSecond, oldFirst, oldSecond) > 0) {
+            return false;
+        }
+
+        decrementEdgeCount(edgeCounts, oldFirst);
+        decrementEdgeCount(edgeCounts, oldSecond);
+        incrementEdgeCount(edgeCounts, newFirst);
+        incrementEdgeCount(edgeCounts, newSecond);
+        dsts[first] = d;
+        dsts[second] = b;
+        return true;
     }
 
     /** Mutable edge-index view used while searching for FFL-increasing swaps. */

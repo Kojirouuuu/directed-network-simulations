@@ -142,6 +142,69 @@ class DirectedGraphTest {
     }
 
     @Test
+    void randomizesByEdgeSwapsWhilePreservingDegrees() {
+        DirectedGraph graph = graph(8,
+                new int[] { 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7 },
+                new int[] { 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 0, 0, 1 });
+        Set<Long> originalEdges = edgeSet(graph);
+        int[] originalInDegrees = inDegrees(graph);
+        int[] originalOutDegrees = outDegrees(graph);
+
+        DirectedGraph randomized = graph.randomizeByEdgeSwaps(0L);
+
+        assertEquals("test_randomized", randomized.name);
+        assertEquals(graph.n, randomized.n);
+        assertEquals(graph.m, randomized.m);
+        assertArrayEquals(originalInDegrees, inDegrees(randomized));
+        assertArrayEquals(originalOutDegrees, outDegrees(randomized));
+        assertEquals(originalEdges, edgeSet(graph));
+        assertFalse(originalEdges.equals(edgeSet(randomized)));
+        assertTrue(randomized.reciprocity() > graph.reciprocity());
+        assertNoSelfLoopsOrParallelEdges(randomized);
+    }
+
+    @Test
+    void randomEdgeSwapsAreDeterministicForFixedSeed() {
+        DirectedGraph graph = graph(8,
+                new int[] { 0, 1, 2, 3, 4, 5, 6, 7 },
+                new int[] { 1, 2, 3, 4, 5, 6, 7, 0 });
+
+        DirectedGraph first = graph.randomizeByEdgeSwaps(7L);
+        DirectedGraph second = graph.randomizeByEdgeSwaps(7L);
+
+        assertEquals(edgeSet(first), edgeSet(second));
+    }
+
+    @Test
+    void randomEdgeSwapsRejectUndirectedEdgesAndReportUnreachableTarget() {
+        DirectedGraph undirected = DirectedGraph.fromEdgeListWithUndirectedFlag(
+                "undirected", 2, new int[] { 0 }, new int[] { 1 }, new boolean[] { true });
+        DirectedGraph complete = graph(3,
+                new int[] { 0, 0, 1, 1, 2, 2 },
+                new int[] { 1, 2, 0, 2, 0, 1 });
+
+        assertThrows(IllegalArgumentException.class, () -> undirected.randomizeByEdgeSwaps(1L));
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class, () -> complete.randomizeByEdgeSwaps(1L));
+        assertTrue(exception.getMessage().contains("60 random edge swaps"));
+        assertTrue(exception.getMessage().contains("600 attempts"));
+        assertTrue(exception.getMessage().contains("accepted 0"));
+    }
+
+    @Test
+    void randomEdgeSwapsReturnNamedCopyForEmptyGraph() {
+        DirectedGraph empty = graph(3, new int[0], new int[0]);
+
+        DirectedGraph randomized = empty.randomizeByEdgeSwaps(1L);
+
+        assertEquals("test_randomized", randomized.name);
+        assertEquals(0, randomized.m);
+        assertArrayEquals(inDegrees(empty), inDegrees(randomized));
+        assertArrayEquals(outDegrees(empty), outDegrees(randomized));
+    }
+
+    @Test
     void increasesReciprocityWhilePreservingDegrees() {
         DirectedGraph graph = graph(4,
                 new int[] { 0, 1, 2, 3 },
