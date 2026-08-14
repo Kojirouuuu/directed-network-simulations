@@ -46,11 +46,15 @@ public class SAR {
         final int rho0Count = config.rho0List.length;
         final int lambdaDirectedCount = config.lambdaDirectedList.length;
         final int lambdaNondirectedCount = config.lambdaNondirectedList.length;
-        final long totalTasks = (long) config.batchSize * config.itrs * rho0Count * lambdaDirectedCount
-                * lambdaNondirectedCount;
+        final long totalTasks = config.runSarSimulations
+                ? (long) config.batchSize * config.itrs * rho0Count * lambdaDirectedCount
+                        * lambdaNondirectedCount
+                : config.batchSize;
 
         System.out.println("Total tasks: " + totalTasks);
         System.out.println(config.networkType + ": N=" + config.N + ", itrs=" + config.itrs);
+        System.out.println("Edge-list output: " + (config.writeEdgeList ? "enabled" : "disabled"));
+        System.out.println("SAR simulations: " + (config.runSarSimulations ? "enabled" : "disabled"));
 
         int parallelism = Runtime.getRuntime().availableProcessors();
         System.out.println("Parallelism: " + parallelism + " (available processors)");
@@ -64,7 +68,7 @@ public class SAR {
 
         try (ForkJoinPool pool = new ForkJoinPool(parallelism)) {
             Future<?> future = pool.submit(() -> IntStream.range(0, config.batchSize).parallel()
-                    .forEach(batchIndex -> processBatch(batchIndex, config, progressItr, done, totalTasks)));
+                    .forEach(batchIndex -> processBatch(batchIndex, config, progressItr, done)));
 
             future.get();
         } finally {
@@ -82,12 +86,10 @@ public class SAR {
      * @param config シミュレーション設定
      * @param progressItr 進捗記録用配列
      * @param done 完了タスク数のカウンタ
-     * @param totalTasks 総タスク数
      */
     private static void processBatch(int batchIndex, SimulationConfig config,
-            int[] progressItr, AtomicLong done, long totalTasks) {
+            int[] progressItr, AtomicLong done) {
         DirectedGraph g;
-        Path resultsPath;
         if (config.loadFromEdgeList) {
             Path networkPath = SwitchUtils.buildNetworkPath(
                     config.networkType, config.N,
@@ -103,7 +105,6 @@ public class SAR {
             } catch (IOException e) {
                 throw new RuntimeException("Failed to load edge list: " + edgeListPath, e);
             }
-            resultsPath = prepareOutputPath(g, batchIndex, config);
         } else {
             g = SwitchUtils.generateGraph(config.networkType, config.N,
                     null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
@@ -111,12 +112,23 @@ public class SAR {
                     config.kuAve, config.gamma, config.m0, config.m, config.swapNum,
                     config.gammaIn, config.gammaOut, config.corrA,
                     GRAPH_BASE_SEED + batchIndex);
-            resultsPath = prepareOutputPath(g, batchIndex, config);
         }
 
         if (config.randomizeByEdgeSwaps) {
             g = g.randomizeByEdgeSwaps(RANDOM_SWAP_BASE_SEED + batchIndex);
         }
+
+        if (config.writeEdgeList && !config.loadFromEdgeList) {
+            writeEdgeList(g, batchIndex, config);
+        }
+
+        if (!config.runSarSimulations) {
+            progressItr[batchIndex] = config.itrs;
+            done.incrementAndGet();
+            return;
+        }
+
+        Path resultsPath = prepareOutputPath(g, batchIndex, config);
 
         for (int itr = 0; itr < config.itrs; itr++) {
             progressItr[batchIndex] = itr;
@@ -141,6 +153,30 @@ public class SAR {
         }
 
         progressItr[batchIndex] = config.itrs;
+    }
+
+    /**
+     * 生成したグラフを、読み込み処理と共通のパス規約で書き出す。
+     *
+     * @param g グラフ
+     * @param batchIndex バッチインデックス
+     * @param config シミュレーション設定
+     */
+    private static void writeEdgeList(DirectedGraph g, int batchIndex, SimulationConfig config) {
+        Path networkPath = SwitchUtils.buildNetworkPath(
+                config.networkType, g.n,
+                null, config.kuAve,
+                config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
+                config.gamma, config.swapNum,
+                config.gammaIn, config.gammaOut, config.corrA);
+        Path edgeListPath = Paths.get("out/edgelist").resolve(networkPath)
+                .resolve(String.format("%d.csv", batchIndex));
+        try {
+            g.writeEdgeList(edgeListPath);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write edge list: " + edgeListPath, e);
+        }
     }
 
     /**
@@ -330,6 +366,8 @@ public class SAR {
          */
         final boolean loadFromEdgeList = false;
         final boolean randomizeByEdgeSwaps = true; // シミュレーション前に次数保存ランダム辺スワップを行うか
+        final boolean writeEdgeList = true; // 生成したネットワークのエッジリストを書き出すか
+        final boolean runSarSimulations = false; // SAR シミュレーションを実行するか
         final boolean isFinal = true; // 最終状態のみ出力するか
         final double dt = 0.1; // isFinal == false の時は dt 刻みで記録する。
         final int batchSize = 10; // バッチサイズ
