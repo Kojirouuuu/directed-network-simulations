@@ -98,7 +98,8 @@ public class SAR {
                     config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
                     config.gamma, config.swapNum,
                     config.gammaIn, config.gammaOut, config.corrA);
-            Path edgeListPath = Paths.get("out/edgelist").resolve(networkPath)
+            Path edgeListPath = Paths.get("out/edgelist")
+                    .resolve(SwitchUtils.appendRandomizationPath(networkPath, config.randomizeByEdgeSwaps))
                     .resolve(String.format("%d.csv", batchIndex));
             try {
                 g = DirectedGraph.loadFromEdgeList(config.networkType, edgeListPath);
@@ -114,7 +115,7 @@ public class SAR {
                     GRAPH_BASE_SEED + batchIndex);
         }
 
-        if (config.randomizeByEdgeSwaps) {
+        if (config.randomizeByEdgeSwaps && !config.loadFromEdgeList) {
             g = g.randomizeByEdgeSwaps(RANDOM_SWAP_BASE_SEED + batchIndex);
         }
 
@@ -170,7 +171,8 @@ public class SAR {
                 config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
                 config.gamma, config.swapNum,
                 config.gammaIn, config.gammaOut, config.corrA);
-        Path edgeListPath = Paths.get("out/edgelist").resolve(networkPath)
+        Path edgeListPath = Paths.get("out/edgelist")
+                .resolve(SwitchUtils.appendRandomizationPath(networkPath, config.randomizeByEdgeSwaps))
                 .resolve(String.format("%d.csv", batchIndex));
         try {
             g.writeEdgeList(edgeListPath);
@@ -197,7 +199,8 @@ public class SAR {
                 config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
                 config.gamma, config.swapNum,
                 config.gammaIn, config.gammaOut, config.corrA);
-        Path basePath = outputDir.resolve(networkPath);
+        Path basePath = outputDir.resolve(
+                SwitchUtils.appendRandomizationPath(networkPath, config.randomizeByEdgeSwaps));
         return PathsEx.resolveIndexed(
                 basePath.resolve(String.format("results_%s.csv", idx)));
     }
@@ -336,9 +339,12 @@ public class SAR {
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
+        // ネットワークの基本設定
         final String networkType = "rev-higgs-social"; // ネットワークタイプ
         final String optionPath = "random-test"; // オプションパス
         final int N = 500_000; // 頂点数
+
+        // 次数パラメータ
         final int kdMin = 5; // 最小次数
         final int kdMax = (int) Math.sqrt(N); // 最大次数
         final int kInMin = 5; // 最小入次数
@@ -350,30 +356,41 @@ public class SAR {
         final double kuAve = 10; // 平均次数
         final int kuMin = 5; // 最小次数
         final int kuMax = (int) Math.sqrt(N); // 最大次数
+
+        // トポロジー生成パラメータ
         final int m0 = 6; // 初期完全グラフの頂点数
         final int m = 6; // 各新規ノードが接続する辺（弧）の数
         final double gamma = 2.5;
-
         final int swapNum = 0; // PowPow 用（null のとき 0 として扱う）
 
         // SchwartzDirectedSF 用パラメータ（他のネットワークタイプでは未使用）
         final Double gammaIn = gamma; // λ_in
         final Double gammaOut = gamma; // λ_out
         final Double corrA = null; // 相関確率 A ∈ [0, 1]
+
+        // 入出力・グラフ処理
         /**
-         * true のとき out/edgelist/{networkPath}/{batchIndex}.csv からグラフを読み込む（GraphGen
-         * で生成したファイル）
+         * true のとき
+         * out/edgelist/{networkPath}/randomization={mode}/{batchIndex}.csv
+         * からグラフを読み込む（GraphGen で生成したファイル）
          */
         final boolean loadFromEdgeList = false;
-        final boolean randomizeByEdgeSwaps = true; // シミュレーション前に次数保存ランダム辺スワップを行うか
+        final boolean randomizeByEdgeSwaps = true; // 次数保存ランダム辺スワップ済みのグラフを使用するか
         final boolean writeEdgeList = true; // 生成したネットワークのエッジリストを書き出すか
         final boolean runSarSimulations = false; // SAR シミュレーションを実行するか
-        final boolean isFinal = true; // 最終状態のみ出力するか
-        final double dt = 0.1; // isFinal == false の時は dt 刻みで記録する。
+
+        // 実行回数
         final int batchSize = 10; // バッチサイズ
         final int itrs = 2; // イテレーション数
+
+        // SAR シミュレーション設定
+        final boolean isFinal = true; // 最終状態のみ出力するか
+        final double dt = 0.1; // isFinal == false の時は dt 刻みで記録する。
+        final boolean useGillespie = false; // true: Gillespie方式, false: イベント駆動方式
         final double mu = 1.0; // 回復率
         final double tMax = 200.0; // シミュレーション終了時刻
+
+        // 伝播率
         // final double lambdaDirectedMin = 0.0;
         // final double lambdaDirectedMax = Double.MAX_VALUE;
         // final double lambdaDirectedStep = Double.MAX_VALUE / 100.0;
@@ -389,6 +406,7 @@ public class SAR {
         // lambdaNondirectedStep); // 無向辺の感染率
         final double[] lambdaNondirectedList = { 0.0 };
 
+        // 初期採用率・閾値
         final double rho0Min = 1.0e-5;
         final double rho0Max = 2.0e-1;
         final double rho0Step = 0.0005;
@@ -396,6 +414,5 @@ public class SAR {
         final double[] rho0List = ArrayUtils.geomspace(rho0Min, rho0Max, rho0Count);
         // final double[] rho0List = { 0.1 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
-        final boolean useGillespie = false; // true: Gillespie方式, false: イベント駆動方式
     }
 }

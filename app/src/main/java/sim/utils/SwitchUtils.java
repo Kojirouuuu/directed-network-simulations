@@ -145,6 +145,18 @@ public final class SwitchUtils {
                 return Paths.get(String.format("%s/N=%d/%s", networkType, N, networkSpecific));
         }
 
+        /**
+         * ネットワークパスにランダム化方式の識別子を追加する。
+         *
+         * @param networkPath {@link #buildNetworkPath} で構築したパス
+         * @param randomizedByEdgeSwaps 次数保存ランダム辺スワップ済みか
+         * @return randomization=edge-swap または randomization=none を追加したパス
+         */
+        public static Path appendRandomizationPath(Path networkPath, boolean randomizedByEdgeSwaps) {
+                String randomization = randomizedByEdgeSwaps ? "edge-swap" : "none";
+                return networkPath.resolve("randomization=" + randomization);
+        }
+
         private static <T> T requireNonNull(T value, String message) {
                 if (value == null) {
                         throw new IllegalArgumentException(message);

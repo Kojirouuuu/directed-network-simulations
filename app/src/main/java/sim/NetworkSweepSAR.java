@@ -529,10 +529,12 @@ public final class NetworkSweepSAR {
 
     /** 実験設定。必要に応じてソース上で変更する。 */
     private static final class SimulationConfig {
+        // ネットワークの基本設定
         final String networkType = "DirectedER";
         final String optionPath = "network-sweep-directed-er-k125-ffl-detail";
-
         final int N = 500_000;
+
+        // 次数パラメータ
         final Integer kdAve = 5;
         final Integer kdMin = 5;
         final Integer kdMax = (int) Math.sqrt(N);
@@ -540,15 +542,20 @@ public final class NetworkSweepSAR {
         final Integer kInMax = (int) Math.sqrt(N);
         final Integer kOutMin = 5;
         final Integer kOutMax = (int) Math.sqrt(N);
+        final Double kuAve = 12.5;
         final Integer kuMin = 5;
         final Integer kuMax = (int) Math.sqrt(N);
-        final Double kuAve = 12.5;
+
+        // トポロジー生成パラメータ
         final Integer m0 = 5;
         final Integer m = 3;
+
+        // SchwartzDirectedSF 用パラメータ
         final Double gammaIn = 2.5;
         final Double gammaOut = 2.5;
         final Double corrA = 0.0;
 
+        // ネットワーク・リワイヤリングのスイープ設定
         final double[] gammaList = { 2.5 };
         final int[] swapNumList = { 0 };
         final RewiringMode rewiringMode = RewiringMode.FFL;
@@ -558,20 +565,29 @@ public final class NetworkSweepSAR {
         final int neutralSwapAttemptsPerEdge = 1;
         final int maxFflIncreaseAttemptsPerEdge = 200;
 
+        // 入出力・実行制御
         // エッジリストだけを生成する間は false。SAR 実験を再開するとき true に戻す。
         final boolean runSarSimulations = true;
-        final boolean isFinal = true;
+
+        // 実行回数
         final int batchSize = 10;
         final int itrs = 5;
+
+        // SAR シミュレーション設定
+        final boolean isFinal = true;
+        final boolean useGillespie = false;
         final double mu = 1.0;
         final double tMax = 200.0;
+
+        // 伝播率
         final double[] lambdaDirectedList = { 0.5 };
         final double[] lambdaNondirectedList = { 0.0 };
+
+        // 初期採用率・閾値
         final double rho0Min = 0.03;
         final double rho0Max = 0.04;
         final double rho0Step = 0.0002;
         final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step);
         final int threshold = 2;
-        final boolean useGillespie = false;
     }
 }
