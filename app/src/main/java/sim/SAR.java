@@ -9,8 +9,10 @@ import sim.utils.PathsEx;
 import sim.utils.SwitchUtils;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
@@ -98,13 +100,13 @@ public class SAR {
                     config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
                     config.gamma, config.swapNum,
                     config.gammaIn, config.gammaOut, config.corrA);
-            Path edgeListPath = Paths.get("out/edgelist")
-                    .resolve(SwitchUtils.appendRandomizationPath(networkPath, config.randomizeByEdgeSwaps))
-                    .resolve(String.format("%d.csv", batchIndex));
             try {
+                Path edgeListPath = resolveEdgeListPath(
+                        Paths.get("out/edgelist"), networkPath,
+                        config.randomizeByEdgeSwaps, batchIndex);
                 g = DirectedGraph.loadFromEdgeList(config.networkType, edgeListPath);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to load edge list: " + edgeListPath, e);
+                throw new RuntimeException("Failed to load edge list for batch " + batchIndex, e);
             }
         } else {
             g = SwitchUtils.generateGraph(config.networkType, config.N,
@@ -154,6 +156,65 @@ public class SAR {
         }
 
         progressItr[batchIndex] = config.itrs;
+    }
+
+    /**
+     * 読み込むエッジリストを解決する。通常の保存先を優先し、GraphGen が実頂点数や
+     * 追加条件のサブディレクトリを使って保存したファイルも検索対象にする。
+     */
+    static Path resolveEdgeListPath(Path edgeListRoot, Path networkPath,
+            boolean randomizedByEdgeSwaps, int batchIndex) throws IOException {
+        Path randomizationPath = SwitchUtils.appendRandomizationPath(
+                networkPath, randomizedByEdgeSwaps);
+        String fileName = String.format("%d.csv", batchIndex);
+        Path expectedPath = edgeListRoot.resolve(randomizationPath).resolve(fileName);
+        if (Files.isRegularFile(expectedPath)) {
+            return expectedPath;
+        }
+
+        // まず同じ N・ネットワーク条件の追加サブディレクトリ内を探す。
+        List<Path> candidates = findEdgeLists(
+                edgeListRoot.resolve(randomizationPath), fileName, null);
+        if (candidates.isEmpty()) {
+            // 実データ由来のグラフでは設定上の N と読み込み後の実頂点数が異なり得る。
+            String randomizationDir = "randomization="
+                    + (randomizedByEdgeSwaps ? "edge-swap" : "none");
+            candidates = findEdgeLists(
+                    edgeListRoot.resolve(networkPath.getName(0)), fileName, randomizationDir);
+        }
+
+        if (candidates.size() == 1) {
+            return candidates.getFirst();
+        }
+        if (candidates.isEmpty()) {
+            throw new IOException("Edge list not found: " + expectedPath);
+        }
+        throw new IOException("Multiple matching edge lists found for " + expectedPath + ": " + candidates);
+    }
+
+    private static List<Path> findEdgeLists(Path searchRoot, String fileName,
+            String requiredDirectory) throws IOException {
+        if (!Files.isDirectory(searchRoot)) {
+            return List.of();
+        }
+        try (var paths = Files.walk(searchRoot)) {
+            return paths
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().equals(fileName))
+                    .filter(path -> requiredDirectory == null
+                            || containsDirectory(path, requiredDirectory))
+                    .sorted()
+                    .toList();
+        }
+    }
+
+    private static boolean containsDirectory(Path path, String directoryName) {
+        for (Path part : path) {
+            if (part.toString().equals(directoryName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -374,14 +435,14 @@ public class SAR {
          * out/edgelist/{networkPath}/randomization={mode}/{batchIndex}.csv
          * からグラフを読み込む（GraphGen で生成したファイル）
          */
-        final boolean loadFromEdgeList = false;
+        final boolean loadFromEdgeList = true;
         final boolean randomizeByEdgeSwaps = true; // 次数保存ランダム辺スワップ済みのグラフを使用するか
-        final boolean writeEdgeList = true; // 生成したネットワークのエッジリストを書き出すか
-        final boolean runSarSimulations = false; // SAR シミュレーションを実行するか
+        final boolean writeEdgeList = false; // 生成したネットワークのエッジリストを書き出すか
+        final boolean runSarSimulations = true; // SAR シミュレーションを実行するか
 
         // 実行回数
         final int batchSize = 10; // バッチサイズ
-        final int itrs = 2; // イテレーション数
+        final int itrs = 10; // イテレーション数
 
         // SAR シミュレーション設定
         final boolean isFinal = true; // 最終状態のみ出力するか
@@ -396,7 +457,7 @@ public class SAR {
         // final double lambdaDirectedStep = Double.MAX_VALUE / 100.0;
         // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
         // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        final double[] lambdaDirectedList = { 0.1, 0.2, 1.0, 2.0, 5.0 };
+        final double[] lambdaDirectedList = { 0.1, 0.2, 1.0, 2.0, 5.0, 10.0 };
 
         // final double lambdaNondirectedMin = 0.0;
         // final double lambdaNondirectedMax = 2.0;
@@ -410,7 +471,7 @@ public class SAR {
         final double rho0Min = 1.0e-5;
         final double rho0Max = 2.0e-1;
         final double rho0Step = 0.0005;
-        final int rho0Count = 50;
+        final int rho0Count = 100;
         final double[] rho0List = ArrayUtils.geomspace(rho0Min, rho0Max, rho0Count);
         // final double[] rho0List = { 0.1 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値

@@ -46,7 +46,7 @@ public class GraphGen {
     private static final double corrA = 0.0;
 
     // リワイヤリング・乱数パラメータ
-    private static final double targetReciprocity = 0.01;
+    private static final double targetReciprocity = 0.00;
     private static final long seed = 42L;
     private static final long randomSwapSeed = 4242L;
 
