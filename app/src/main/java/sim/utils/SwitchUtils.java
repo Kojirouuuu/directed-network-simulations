@@ -157,6 +157,20 @@ public final class SwitchUtils {
                 return networkPath.resolve("randomization=" + randomization);
         }
 
+        /**
+         * 標準形式のエッジリストパスを構築する。
+         *
+         * @param networkPath {@link #buildNetworkPath} で構築したパス
+         * @param randomizedByEdgeSwaps 次数保存ランダム辺スワップ済みか
+         * @param batchIndex バッチインデックス
+         * @return out/edgelist/{networkPath}/randomization={mode}/{batchIndex}.csv
+         */
+        public static Path buildEdgeListPath(Path networkPath, boolean randomizedByEdgeSwaps, int batchIndex) {
+                return Paths.get("out", "edgelist")
+                                .resolve(appendRandomizationPath(networkPath, randomizedByEdgeSwaps))
+                                .resolve(String.format("%d.csv", batchIndex));
+        }
+
         private static <T> T requireNonNull(T value, String message) {
                 if (value == null) {
                         throw new IllegalArgumentException(message);

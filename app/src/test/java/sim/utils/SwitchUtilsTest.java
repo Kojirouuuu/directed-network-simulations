@@ -65,6 +65,18 @@ class SwitchUtilsTest {
     }
 
     @Test
+    void buildsStandardEdgeListPath() {
+        Path networkPath = Path.of("DirectedER/N=1000/kAve=6.00");
+
+        assertEquals(
+                Path.of("out/edgelist/DirectedER/N=1000/kAve=6.00/randomization=edge-swap/2.csv"),
+                SwitchUtils.buildEdgeListPath(networkPath, true, 2));
+        assertEquals(
+                Path.of("out/edgelist/DirectedER/N=1000/kAve=6.00/randomization=none/2.csv"),
+                SwitchUtils.buildEdgeListPath(networkPath, false, 2));
+    }
+
+    @Test
     void degreeDistributionSarPathRequiresItsParameters() {
         assertThrows(IllegalArgumentException.class, () -> SwitchUtils.buildNetworkPath(
                 "DegreeDistributionSAR", 100,

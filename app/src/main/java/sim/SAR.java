@@ -402,7 +402,7 @@ public class SAR {
     private static class SimulationConfig {
         // ネットワークの基本設定
         final String networkType = "rev-higgs-social"; // ネットワークタイプ
-        final String optionPath = "random-test"; // オプションパス
+        final String optionPath = "lambda-ugokasu-real-2"; // オプションパス
         final int N = 500_000; // 頂点数
 
         // 次数パラメータ
@@ -442,7 +442,7 @@ public class SAR {
 
         // 実行回数
         final int batchSize = 10; // バッチサイズ
-        final int itrs = 10; // イテレーション数
+        final int itrs = 50; // イテレーション数
 
         // SAR シミュレーション設定
         final boolean isFinal = true; // 最終状態のみ出力するか
@@ -452,12 +452,12 @@ public class SAR {
         final double tMax = 200.0; // シミュレーション終了時刻
 
         // 伝播率
-        // final double lambdaDirectedMin = 0.0;
-        // final double lambdaDirectedMax = Double.MAX_VALUE;
-        // final double lambdaDirectedStep = Double.MAX_VALUE / 100.0;
-        // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
-        // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        final double[] lambdaDirectedList = { 0.1, 0.2, 1.0, 2.0, 5.0, 10.0 };
+        final double lambdaDirectedMin = 0.0;
+        final double lambdaDirectedMax = 2.0;
+        final double lambdaDirectedStep = 0.02;
+        final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
+                lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
+        // final double[] lambdaDirectedList = { 0.1, 0.2, 1.0, 2.0, 5.0, 10.0 };
 
         // final double lambdaNondirectedMin = 0.0;
         // final double lambdaNondirectedMax = 2.0;
@@ -468,12 +468,13 @@ public class SAR {
         final double[] lambdaNondirectedList = { 0.0 };
 
         // 初期採用率・閾値
-        final double rho0Min = 1.0e-5;
-        final double rho0Max = 2.0e-1;
-        final double rho0Step = 0.0005;
-        final int rho0Count = 100;
-        final double[] rho0List = ArrayUtils.geomspace(rho0Min, rho0Max, rho0Count);
-        // final double[] rho0List = { 0.1 }; // 初期感染率のリスト
+        // final double rho0Min = 1.0e-5;
+        // final double rho0Max = 2.0e-1;
+        // final double rho0Step = 0.0005;
+        // final int rho0Count = 100;
+        // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step);
+        // final double[] rho0List = ArrayUtils.geomspace(rho0Min, rho0Max, rho0Count);
+        final double[] rho0List = { 1e-2, 1e-3, 1e-4 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
     }
 }
