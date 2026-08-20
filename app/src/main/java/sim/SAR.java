@@ -1,6 +1,7 @@
 package sim;
 
 import sim.network.DirectedGraph;
+import sim.network.DirectedGraph.DegreeSide;
 import sim.simulation.SARGillespieSimulator;
 import sim.simulation.SARSimulator;
 import sim.simulation.SARResult;
@@ -31,7 +32,7 @@ public class SAR {
     private static final long RNG_BASE_SEED = 7L; // 乱数生成用のベースシード（閾値リスト・ノードシャッフル用）
     private static final long SIM_BASE_SEED = 12345L; // シミュレーション用のベースシード
     private static final long GRAPH_BASE_SEED = 42L; // グラフ生成用のベースシード
-    private static final long RANDOM_SWAP_BASE_SEED = 4242L; // ランダム辺スワップ用のベースシード
+    private static final long GRAPH_RANDOMIZATION_BASE_SEED = 4242L; // グラフランダマイズ用のベースシード
 
     // シードオフセット（異なる目的で異なるシードを生成するため）
     private static final long SEED_OFFSET_NODES = 2000L; // ノードシャッフル用オフセット
@@ -55,6 +56,7 @@ public class SAR {
 
         System.out.println("Total tasks: " + totalTasks);
         System.out.println(config.networkType + ": N=" + config.N + ", itrs=" + config.itrs);
+        System.out.println("Graph randomization: " + config.randomizationMode.pathLabel());
         System.out.println("Edge-list output: " + (config.writeEdgeList ? "enabled" : "disabled"));
         System.out.println("SAR simulations: " + (config.runSarSimulations ? "enabled" : "disabled"));
 
@@ -103,7 +105,7 @@ public class SAR {
             try {
                 Path edgeListPath = resolveEdgeListPath(
                         Paths.get("out/edgelist"), networkPath,
-                        config.randomizeByEdgeSwaps, batchIndex);
+                        config.randomizationMode.usesEdgeSwappedInput(), batchIndex);
                 g = DirectedGraph.loadFromEdgeList(config.networkType, edgeListPath);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to load edge list for batch " + batchIndex, e);
@@ -117,9 +119,10 @@ public class SAR {
                     GRAPH_BASE_SEED + batchIndex);
         }
 
-        if (config.randomizeByEdgeSwaps && !config.loadFromEdgeList) {
-            g = g.randomizeByEdgeSwaps(RANDOM_SWAP_BASE_SEED + batchIndex);
-        }
+        g = applyRandomization(
+                g, config.randomizationMode,
+                GRAPH_RANDOMIZATION_BASE_SEED + batchIndex,
+                config.loadFromEdgeList);
 
         if (config.writeEdgeList && !config.loadFromEdgeList) {
             writeEdgeList(g, batchIndex, config);
@@ -217,6 +220,35 @@ public class SAR {
         return false;
     }
 
+    /** 選択したモードをグラフへ適用する。 */
+    static DirectedGraph applyRandomization(DirectedGraph graph, RandomizationMode mode,
+            long seed, boolean loadedFromEdgeList) {
+        if (graph == null) {
+            throw new IllegalArgumentException("graph must be non-null");
+        }
+        if (mode == null) {
+            throw new IllegalArgumentException("mode must be non-null");
+        }
+
+        return switch (mode) {
+            case NONE -> graph;
+            case EDGE_SWAP -> loadedFromEdgeList ? graph : graph.randomizeByEdgeSwaps(seed);
+            case SHUFFLE_IN_DEGREES -> graph.randomizeByShuffledDegreeSequence(DegreeSide.IN, seed);
+            case SHUFFLE_OUT_DEGREES -> graph.randomizeByShuffledDegreeSequence(DegreeSide.OUT, seed);
+        };
+    }
+
+    /** 最終的なランダマイズ方式を区別する出力パスを返す。 */
+    static Path appendRandomizationPath(Path networkPath, RandomizationMode mode) {
+        if (networkPath == null) {
+            throw new IllegalArgumentException("networkPath must be non-null");
+        }
+        if (mode == null) {
+            throw new IllegalArgumentException("mode must be non-null");
+        }
+        return networkPath.resolve("randomization=" + mode.pathLabel());
+    }
+
     /**
      * 生成したグラフを、読み込み処理と共通のパス規約で書き出す。
      *
@@ -233,7 +265,7 @@ public class SAR {
                 config.gamma, config.swapNum,
                 config.gammaIn, config.gammaOut, config.corrA);
         Path edgeListPath = Paths.get("out/edgelist")
-                .resolve(SwitchUtils.appendRandomizationPath(networkPath, config.randomizeByEdgeSwaps))
+                .resolve(appendRandomizationPath(networkPath, config.randomizationMode))
                 .resolve(String.format("%d.csv", batchIndex));
         try {
             g.writeEdgeList(edgeListPath);
@@ -261,7 +293,7 @@ public class SAR {
                 config.gamma, config.swapNum,
                 config.gammaIn, config.gammaOut, config.corrA);
         Path basePath = outputDir.resolve(
-                SwitchUtils.appendRandomizationPath(networkPath, config.randomizeByEdgeSwaps));
+                appendRandomizationPath(networkPath, config.randomizationMode));
         return PathsEx.resolveIndexed(
                 basePath.resolve(String.format("results_%s.csv", idx)));
     }
@@ -396,12 +428,36 @@ public class SAR {
         System.out.flush();
     }
 
+    /** SAR で使用するグラフランダマイズ方式。 */
+    enum RandomizationMode {
+        NONE("none", false),
+        EDGE_SWAP("edge-swap", true),
+        SHUFFLE_IN_DEGREES("in-degree-shuffle", true),
+        SHUFFLE_OUT_DEGREES("out-degree-shuffle", true);
+
+        private final String pathLabel;
+        private final boolean usesEdgeSwappedInput;
+
+        RandomizationMode(String pathLabel, boolean usesEdgeSwappedInput) {
+            this.pathLabel = pathLabel;
+            this.usesEdgeSwappedInput = usesEdgeSwappedInput;
+        }
+
+        String pathLabel() {
+            return pathLabel;
+        }
+
+        boolean usesEdgeSwappedInput() {
+            return usesEdgeSwappedInput;
+        }
+    }
+
     /**
      * シミュレーション設定を保持する内部クラス。
      */
     private static class SimulationConfig {
         // ネットワークの基本設定
-        final String networkType = "rev-higgs-social"; // ネットワークタイプ
+        final String networkType = "rev-ego-Twitter"; // ネットワークタイプ
         final String optionPath = "lambda-ugokasu-real-2"; // オプションパス
         final int N = 500_000; // 頂点数
 
@@ -433,16 +489,16 @@ public class SAR {
         /**
          * true のとき
          * out/edgelist/{networkPath}/randomization={mode}/{batchIndex}.csv
-         * からグラフを読み込む（GraphGen で生成したファイル）
+         * からグラフを読み込む（次数列シャッフル時は edge-swap 配下を使用）
          */
         final boolean loadFromEdgeList = true;
-        final boolean randomizeByEdgeSwaps = true; // 次数保存ランダム辺スワップ済みのグラフを使用するか
+        final RandomizationMode randomizationMode = RandomizationMode.SHUFFLE_IN_DEGREES;
         final boolean writeEdgeList = false; // 生成したネットワークのエッジリストを書き出すか
         final boolean runSarSimulations = true; // SAR シミュレーションを実行するか
 
         // 実行回数
         final int batchSize = 10; // バッチサイズ
-        final int itrs = 50; // イテレーション数
+        final int itrs = 10; // イテレーション数
 
         // SAR シミュレーション設定
         final boolean isFinal = true; // 最終状態のみ出力するか

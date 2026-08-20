@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
@@ -205,6 +208,75 @@ class DirectedGraphTest {
     }
 
     @Test
+    void shufflesInDegreeSequenceWhilePreservingBothDegreeDistributions() {
+        DirectedGraph graph = graphWithDistinctDegreeSequences();
+        int[] originalInDegrees = inDegrees(graph);
+        int[] originalOutDegrees = outDegrees(graph);
+
+        DirectedGraph randomized = graph.randomizeByShuffledDegreeSequence(
+                DirectedGraph.DegreeSide.IN, 7L);
+
+        assertEquals("test_in_degree_shuffled", randomized.name);
+        assertEquals(graph.n, randomized.n);
+        assertEquals(graph.m, randomized.m);
+        assertArrayEquals(originalOutDegrees, outDegrees(randomized));
+        assertArrayEquals(sorted(originalInDegrees), sorted(inDegrees(randomized)));
+        assertFalse(Arrays.equals(originalInDegrees, inDegrees(randomized)));
+        assertArrayEquals(originalInDegrees, inDegrees(graph));
+        assertArrayEquals(originalOutDegrees, outDegrees(graph));
+    }
+
+    @Test
+    void shufflesOutDegreeSequenceWhilePreservingBothDegreeDistributions() {
+        DirectedGraph graph = graphWithDistinctDegreeSequences();
+        int[] originalInDegrees = inDegrees(graph);
+        int[] originalOutDegrees = outDegrees(graph);
+
+        DirectedGraph randomized = graph.randomizeByShuffledDegreeSequence(
+                DirectedGraph.DegreeSide.OUT, 7L);
+
+        assertEquals("test_out_degree_shuffled", randomized.name);
+        assertEquals(graph.n, randomized.n);
+        assertEquals(graph.m, randomized.m);
+        assertArrayEquals(originalInDegrees, inDegrees(randomized));
+        assertArrayEquals(sorted(originalOutDegrees), sorted(outDegrees(randomized)));
+        assertFalse(Arrays.equals(originalOutDegrees, outDegrees(randomized)));
+        assertArrayEquals(originalInDegrees, inDegrees(graph));
+        assertArrayEquals(originalOutDegrees, outDegrees(graph));
+    }
+
+    @Test
+    void shuffledDegreeRandomizationIsDeterministicAndAllowsConfigurationModelEdges() {
+        DirectedGraph graph = graphWithDistinctDegreeSequences();
+
+        DirectedGraph first = graph.randomizeByShuffledDegreeSequence(
+                DirectedGraph.DegreeSide.IN, 123L);
+        DirectedGraph second = graph.randomizeByShuffledDegreeSequence(
+                DirectedGraph.DegreeSide.IN, 123L);
+        DirectedGraph loops = graph(1, new int[] { 0, 0 }, new int[] { 0, 0 })
+                .randomizeByShuffledDegreeSequence(DirectedGraph.DegreeSide.OUT, 1L);
+
+        assertEquals(edgeMultiset(first), edgeMultiset(second));
+        assertEquals(2, edgeMultiplicity(loops, 0, 0));
+    }
+
+    @Test
+    void shuffledDegreeRandomizationHandlesEmptyGraphAndRejectsInvalidInputs() {
+        DirectedGraph empty = graph(3, new int[0], new int[0]);
+        DirectedGraph randomized = empty.randomizeByShuffledDegreeSequence(
+                DirectedGraph.DegreeSide.IN, 1L);
+        DirectedGraph undirected = DirectedGraph.fromEdgeListWithUndirectedFlag(
+                "undirected", 2, new int[] { 0 }, new int[] { 1 }, new boolean[] { true });
+
+        assertEquals("test_in_degree_shuffled", randomized.name);
+        assertEquals(0, randomized.m);
+        assertThrows(IllegalArgumentException.class,
+                () -> empty.randomizeByShuffledDegreeSequence(null, 1L));
+        assertThrows(IllegalArgumentException.class,
+                () -> undirected.randomizeByShuffledDegreeSequence(DirectedGraph.DegreeSide.IN, 1L));
+    }
+
+    @Test
     void increasesReciprocityWhilePreservingDegrees() {
         DirectedGraph graph = graph(4,
                 new int[] { 0, 1, 2, 3 },
@@ -323,6 +395,30 @@ class DirectedGraphTest {
     private static DirectedGraph graph(int n, int[] sources, int[] destinations) {
         return DirectedGraph.fromEdgeListWithUndirectedFlag(
                 "test", n, sources, destinations, new boolean[sources.length]);
+    }
+
+    private static DirectedGraph graphWithDistinctDegreeSequences() {
+        return graph(5,
+                new int[] { 0, 0, 0, 0, 1, 1, 1, 2, 2, 3 },
+                new int[] { 1, 2, 2, 3, 3, 3, 4, 4, 4, 4 });
+    }
+
+    private static int[] sorted(int[] values) {
+        int[] copy = Arrays.copyOf(values, values.length);
+        Arrays.sort(copy);
+        return copy;
+    }
+
+    private static List<Long> edgeMultiset(DirectedGraph graph) {
+        List<Long> edges = new ArrayList<>(graph.m);
+        for (int source = 0; source < graph.n; source++) {
+            DirectedGraph.IntRange range = graph.outNeighborRange(source);
+            for (int edge = range.start; edge < range.end; edge++) {
+                edges.add(edgeKey(source, graph.getOutNeighbor(edge)));
+            }
+        }
+        edges.sort(Long::compareTo);
+        return edges;
     }
 
     private static int[] inDegrees(DirectedGraph graph) {

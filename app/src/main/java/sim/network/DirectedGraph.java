@@ -21,6 +21,12 @@ import java.util.Random;
  * この実装では、有向辺(u, v)と(v, u)が同時に存在し、かつ無向辺(u, v)が存在する場合を含みます。
  */
 public final class DirectedGraph {
+    /** ランダム再接続の前に頂点間で再配置する次数列。 */
+    public enum DegreeSide {
+        IN,
+        OUT
+    }
+
     public final String name; // グラフの名前（RR, ER, BA, CM, ...）
     public final int n; // 頂点数
     public final int m; // 辺数
@@ -348,6 +354,69 @@ public final class DirectedGraph {
     }
 
     /**
+     * 指定した側の次数列を頂点間でシャッフルし、全ての有向辺をランダムに繋ぎ直す。
+     * 元のグラフは変更しない。
+     *
+     * <p>{@code IN} の場合は各頂点の出次数を固定したまま入次数を再配置し、
+     * {@code OUT} の場合は各頂点の入次数を固定したまま出次数を再配置する。
+     * どちらの場合も入次数分布・出次数分布と辺数は保存される。</p>
+     *
+     * <p>再接続は有向 Configuration Model として行うため、自己ループと多重辺を
+     * 許容する。</p>
+     *
+     * @param side 頂点間でシャッフルする次数列
+     * @param seed 乱数シード
+     * @return 次数列の再配置とランダム再接続を行った新しい DirectedGraph
+     * @throws IllegalArgumentException side が null、または無向由来辺を含む場合
+     */
+    public DirectedGraph randomizeByShuffledDegreeSequence(DegreeSide side, long seed) {
+        if (side == null) {
+            throw new IllegalArgumentException("side must be non-null");
+        }
+        for (boolean isUndirected : outIsUndirected) {
+            if (isUndirected) {
+                throw new IllegalArgumentException(
+                        "randomizeByShuffledDegreeSequence requires a purely directed graph");
+            }
+        }
+
+        int[] inDegrees = new int[n];
+        int[] outDegrees = new int[n];
+        for (int vertex = 0; vertex < n; vertex++) {
+            inDegrees[vertex] = inPtr[vertex + 1] - inPtr[vertex];
+            outDegrees[vertex] = outPtr[vertex + 1] - outPtr[vertex];
+        }
+
+        Random random = new Random(seed);
+        shuffle(side == DegreeSide.IN ? inDegrees : outDegrees, random);
+
+        int[] outStubs = new int[m];
+        int[] inStubs = new int[m];
+        int outPosition = 0;
+        int inPosition = 0;
+        for (int vertex = 0; vertex < n; vertex++) {
+            Arrays.fill(outStubs, outPosition, outPosition + outDegrees[vertex], vertex);
+            outPosition += outDegrees[vertex];
+            Arrays.fill(inStubs, inPosition, inPosition + inDegrees[vertex], vertex);
+            inPosition += inDegrees[vertex];
+        }
+
+        if (outPosition != m || inPosition != m) {
+            throw new IllegalStateException(
+                    "Stub count mismatch: out=" + outPosition + ", in=" + inPosition + ", m=" + m);
+        }
+
+        shuffle(outStubs, random);
+        shuffle(inStubs, random);
+
+        String suffix = side == DegreeSide.IN
+                ? "_in_degree_shuffled"
+                : "_out_degree_shuffled";
+        return fromEdgeListWithUndirectedFlag(
+                name + suffix, n, outStubs, inStubs, new boolean[m]);
+    }
+
+    /**
      * 入次数・出次数を保存するランダムな辺スワップにより、グラフをランダム化する。
      * 元のグラフは変更しない。
      *
@@ -521,6 +590,15 @@ public final class DirectedGraph {
         dsts[first] = d;
         dsts[second] = b;
         return true;
+    }
+
+    private static void shuffle(int[] values, Random random) {
+        for (int i = values.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            int value = values[i];
+            values[i] = values[j];
+            values[j] = value;
+        }
     }
 
     /** Mutable edge-index view used while searching for FFL-increasing swaps. */
