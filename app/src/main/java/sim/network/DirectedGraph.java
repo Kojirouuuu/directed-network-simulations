@@ -417,6 +417,69 @@ public final class DirectedGraph {
     }
 
     /**
+     * 各頂点の入次数・出次数の組を指定倍率だけ複製し、有向 Configuration Model として
+     * 全ての辺をランダムに繋ぎ直した拡張グラフを返す。元のグラフは変更しない。
+     *
+     * <p>頂点ごとの {@code (inDegree, outDegree)} を組のまま複製するため、拡張後の
+     * 経験的同時次数分布は元グラフと厳密に一致する。自己ループと多重辺を許容する。</p>
+     *
+     * @param multiplier 頂点数と辺数の倍率（2以上）
+     * @param seed スタブ再接続用の乱数シード
+     * @return 同時次数分布を保存した拡張グラフ
+     * @throws IllegalArgumentException 倍率が2未満、無向由来辺を含む、または拡張後の
+     *         頂点数・辺数が {@code int} の範囲を超える場合
+     */
+    public DirectedGraph expandByRepeatedJointDegreeSequence(int multiplier, long seed) {
+        if (multiplier < 2) {
+            throw new IllegalArgumentException("multiplier must be at least 2");
+        }
+        for (boolean isUndirected : outIsUndirected) {
+            if (isUndirected) {
+                throw new IllegalArgumentException(
+                        "expandByRepeatedJointDegreeSequence requires a purely directed graph");
+            }
+        }
+
+        final int expandedN;
+        final int expandedM;
+        try {
+            expandedN = Math.multiplyExact(n, multiplier);
+            expandedM = Math.multiplyExact(m, multiplier);
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(
+                    "expanded vertex or edge count exceeds the supported int range", e);
+        }
+
+        int[] sources = new int[expandedM];
+        int[] destinations = new int[expandedM];
+        int sourcePosition = 0;
+        int destinationPosition = 0;
+        for (int copy = 0; copy < multiplier; copy++) {
+            int vertexOffset = copy * n;
+            for (int vertex = 0; vertex < n; vertex++) {
+                int expandedVertex = vertexOffset + vertex;
+                int outDegree = outPtr[vertex + 1] - outPtr[vertex];
+                int inDegree = inPtr[vertex + 1] - inPtr[vertex];
+                Arrays.fill(sources, sourcePosition, sourcePosition + outDegree, expandedVertex);
+                Arrays.fill(destinations, destinationPosition, destinationPosition + inDegree, expandedVertex);
+                sourcePosition += outDegree;
+                destinationPosition += inDegree;
+            }
+        }
+
+        if (sourcePosition != expandedM || destinationPosition != expandedM) {
+            throw new IllegalStateException(
+                    "Stub count mismatch: out=" + sourcePosition + ", in=" + destinationPosition
+                            + ", m=" + expandedM);
+        }
+
+        shuffle(destinations, new Random(seed));
+        return fromEdgeListWithUndirectedFlag(
+                name + "_joint_degree_cm_x" + multiplier,
+                expandedN, sources, destinations, new boolean[expandedM]);
+    }
+
+    /**
      * 入次数・出次数を保存するランダムな辺スワップにより、グラフをランダム化する。
      * 元のグラフは変更しない。
      *

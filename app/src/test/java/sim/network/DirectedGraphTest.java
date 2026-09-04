@@ -3,13 +3,16 @@ package sim.network;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -277,6 +280,50 @@ class DirectedGraphTest {
     }
 
     @Test
+    void expandsByRepeatingTheJointDegreeSequenceExactly() {
+        DirectedGraph original = graphWithDistinctDegreeSequences();
+        int[] originalInDegrees = inDegrees(original);
+        int[] originalOutDegrees = outDegrees(original);
+
+        DirectedGraph expanded = original.expandByRepeatedJointDegreeSequence(3, 123L);
+
+        assertEquals("test_joint_degree_cm_x3", expanded.name);
+        assertEquals(3 * original.n, expanded.n);
+        assertEquals(3 * original.m, expanded.m);
+        assertEquals(multipliedCounts(jointDegreeCounts(original), 3), jointDegreeCounts(expanded));
+        assertArrayEquals(originalInDegrees, inDegrees(original));
+        assertArrayEquals(originalOutDegrees, outDegrees(original));
+    }
+
+    @Test
+    void repeatedJointDegreeExpansionIsDeterministicAndHandlesEmptyGraphs() {
+        DirectedGraph original = graphWithDistinctDegreeSequences();
+
+        DirectedGraph first = original.expandByRepeatedJointDegreeSequence(2, 7L);
+        DirectedGraph second = original.expandByRepeatedJointDegreeSequence(2, 7L);
+        DirectedGraph differentSeed = original.expandByRepeatedJointDegreeSequence(2, 8L);
+        DirectedGraph empty = graph(3, new int[0], new int[0])
+                .expandByRepeatedJointDegreeSequence(2, 1L);
+
+        assertEquals(edgeMultiset(first), edgeMultiset(second));
+        assertNotEquals(edgeMultiset(first), edgeMultiset(differentSeed));
+        assertEquals(6, empty.n);
+        assertEquals(0, empty.m);
+    }
+
+    @Test
+    void repeatedJointDegreeExpansionRejectsInvalidInputs() {
+        DirectedGraph directed = graph(2, new int[] { 0 }, new int[] { 1 });
+        DirectedGraph undirected = DirectedGraph.fromEdgeListWithUndirectedFlag(
+                "undirected", 2, new int[] { 0 }, new int[] { 1 }, new boolean[] { true });
+
+        assertThrows(IllegalArgumentException.class,
+                () -> directed.expandByRepeatedJointDegreeSequence(1, 1L));
+        assertThrows(IllegalArgumentException.class,
+                () -> undirected.expandByRepeatedJointDegreeSequence(2, 1L));
+    }
+
+    @Test
     void increasesReciprocityWhilePreservingDegrees() {
         DirectedGraph graph = graph(4,
                 new int[] { 0, 1, 2, 3 },
@@ -437,6 +484,23 @@ class DirectedGraphTest {
             degrees[u] = range.end - range.start;
         }
         return degrees;
+    }
+
+    private static Map<Long, Integer> jointDegreeCounts(DirectedGraph graph) {
+        int[] inDegrees = inDegrees(graph);
+        int[] outDegrees = outDegrees(graph);
+        Map<Long, Integer> counts = new HashMap<>();
+        for (int vertex = 0; vertex < graph.n; vertex++) {
+            long key = ((long) inDegrees[vertex] << 32) | (outDegrees[vertex] & 0xffffffffL);
+            counts.merge(key, 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    private static Map<Long, Integer> multipliedCounts(Map<Long, Integer> counts, int multiplier) {
+        Map<Long, Integer> multiplied = new HashMap<>();
+        counts.forEach((key, count) -> multiplied.put(key, count * multiplier));
+        return multiplied;
     }
 
     private static Set<Long> edgeSet(DirectedGraph graph) {
