@@ -13,8 +13,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.List;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,7 +48,6 @@ public class SAR {
      */
     public static void main(String[] args) throws Exception {
         SimulationConfig config = new SimulationConfig();
-
         final int rho0Count = config.rho0List.length;
         final int lambdaDirectedCount = config.lambdaDirectedList.length;
         final int lambdaNondirectedCount = config.lambdaNondirectedList.length;
@@ -53,34 +55,85 @@ public class SAR {
                 ? (long) config.batchSize * config.itrs * rho0Count * lambdaDirectedCount
                         * lambdaNondirectedCount
                 : config.batchSize;
+        final long plannedSimulationCount = config.runSarSimulations ? totalTasks : 0L;
+        final int parallelism = Runtime.getRuntime().availableProcessors();
+        SARRunSummary summary = createRunSummary(config, plannedSimulationCount, parallelism);
+        Thread shutdownHook = new Thread(summary::finishInterruptedBestEffort, "sar-summary-shutdown-hook");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+        Throwable failure = null;
 
-        System.out.println("Total tasks: " + totalTasks);
-        System.out.println(config.networkType + ": N=" + config.N + ", itrs=" + config.itrs);
-        System.out.println("Graph randomization: " + config.randomizationMode.pathLabel());
-        System.out.println("Edge-list output: " + (config.writeEdgeList ? "enabled" : "disabled"));
-        System.out.println("SAR simulations: " + (config.runSarSimulations ? "enabled" : "disabled"));
+        try {
+            DirectedGraph sharedJointDegreeSource = config.randomizationMode == RandomizationMode.JOINT_DEGREE_CM
+                    ? loadGraph(config, 0)
+                    : null;
 
-        int parallelism = Runtime.getRuntime().availableProcessors();
-        System.out.println("Parallelism: " + parallelism + " (available processors)");
+            System.out.println("Total tasks: " + totalTasks);
+            if (sharedJointDegreeSource == null) {
+                System.out.println(config.networkType + ": N=" + config.N + ", itrs=" + config.itrs);
+            } else {
+                int targetN = checkedExpandedSize(sharedJointDegreeSource.n, config.sizeMultiplier, "vertex");
+                System.out.println(config.networkType + ": sourceN=" + sharedJointDegreeSource.n
+                        + ", sizeMultiplier=" + config.sizeMultiplier + ", targetN=" + targetN
+                        + ", itrs=" + config.itrs);
+            }
+            System.out.println("Graph randomization: "
+                    + effectiveRandomizationMode(config.randomizationMode, config.sizeMultiplier).pathLabel());
+            System.out.println("Edge-list output: " + (config.writeEdgeList ? "enabled" : "disabled"));
+            System.out.println("SAR simulations: " + (config.runSarSimulations ? "enabled" : "disabled"));
 
-        int[] progressItr = new int[config.batchSize];
-        AtomicLong done = new AtomicLong(0);
-        AtomicBoolean running = new AtomicBoolean(true);
+            System.out.println("Parallelism: " + parallelism + " (available processors)");
 
-        Thread renderer = createTotalProgressRenderer(done, totalTasks, running);
-        renderer.start();
+            int[] progressItr = new int[config.batchSize];
+            AtomicLong done = new AtomicLong(0);
+            AtomicBoolean running = new AtomicBoolean(true);
 
-        try (ForkJoinPool pool = new ForkJoinPool(parallelism)) {
-            Future<?> future = pool.submit(() -> IntStream.range(0, config.batchSize).parallel()
-                    .forEach(batchIndex -> processBatch(batchIndex, config, progressItr, done)));
+            Thread renderer = createTotalProgressRenderer(done, totalTasks, running);
+            renderer.start();
 
-            future.get();
+            try (ForkJoinPool pool = new ForkJoinPool(parallelism)) {
+                Future<?> future = pool.submit(() -> IntStream.range(0, config.batchSize).parallel()
+                        .forEach(batchIndex -> processBatch(
+                                batchIndex, config, sharedJointDegreeSource, progressItr, done, summary)));
+
+                future.get();
+            } finally {
+                running.set(false);
+                renderer.join();
+            }
+
+            System.out.println("All tasks completed");
+        } catch (Exception e) {
+            failure = e;
+            summary.recordUnhandledErrorIfAbsent(e);
+            throw e;
+        } catch (Error e) {
+            failure = e;
+            summary.recordUnhandledErrorIfAbsent(e);
+            throw e;
         } finally {
-            running.set(false);
-            renderer.join();
+            try {
+                if (failure == null) {
+                    summary.finishSucceeded();
+                } else {
+                    summary.finishFailed();
+                }
+                if (summary.summaryPath() != null) {
+                    System.out.println("Run summary: " + summary.summaryPath());
+                }
+            } catch (IOException e) {
+                if (failure == null) {
+                    throw e;
+                }
+                failure.addSuppressed(e);
+                System.err.println("Failed to finalize SAR run summary: " + e.getMessage());
+            } finally {
+                try {
+                    Runtime.getRuntime().removeShutdownHook(shutdownHook);
+                } catch (IllegalStateException ignored) {
+                    // JVM shutdown is already in progress; the hook will handle finalization.
+                }
+            }
         }
-
-        System.out.println("All tasks completed");
     }
 
     /**
@@ -90,10 +143,93 @@ public class SAR {
      * @param config シミュレーション設定
      * @param progressItr 進捗記録用配列
      * @param done 完了タスク数のカウンタ
+     * @param summary 実行サマリー
      */
     private static void processBatch(int batchIndex, SimulationConfig config,
-            int[] progressItr, AtomicLong done) {
-        DirectedGraph g;
+            DirectedGraph sharedJointDegreeSource,
+            int[] progressItr, AtomicLong done, SARRunSummary summary) {
+        Instant batchStartedAt = Instant.now();
+        summary.recordBatchStarted(batchIndex, batchStartedAt);
+        String stage = "graph-loading";
+        SARRunSummary.ErrorContext errorContext = SARRunSummary.ErrorContext.forBatch(batchIndex);
+
+        try {
+            DirectedGraph g;
+            if (sharedJointDegreeSource != null) {
+                stage = "graph-randomization";
+                g = applyRandomization(
+                        sharedJointDegreeSource, config.randomizationMode,
+                        GRAPH_RANDOMIZATION_BASE_SEED + batchIndex,
+                        config.loadFromEdgeList, config.sizeMultiplier);
+            } else {
+                g = loadGraph(config, batchIndex);
+                stage = "graph-randomization";
+                g = applyRandomization(
+                        g, config.randomizationMode,
+                        GRAPH_RANDOMIZATION_BASE_SEED + batchIndex,
+                        config.loadFromEdgeList, config.sizeMultiplier);
+            }
+
+            Path outputDirectory = buildOutputDirectory(g, config);
+            stage = "summary-initialization";
+            summary.registerBatchGraph(batchIndex, g.n, g.m, outputDirectory);
+
+            if (config.writeEdgeList && !config.loadFromEdgeList) {
+                stage = "edge-list-output";
+                writeEdgeList(g, batchIndex, config);
+            }
+
+            if (!config.runSarSimulations) {
+                progressItr[batchIndex] = config.itrs;
+                done.incrementAndGet();
+                summary.recordBatchCompleted(batchIndex, Instant.now());
+                return;
+            }
+
+            stage = "result-path-preparation";
+            Path resultsPath = prepareOutputPath(outputDirectory, batchIndex);
+            summary.recordResultPath(batchIndex, resultsPath);
+
+            for (int itr = 0; itr < config.itrs; itr++) {
+                progressItr[batchIndex] = itr;
+
+                for (int ri = 0; ri < config.rho0List.length; ri++) {
+                    double rho0 = config.rho0List[ri];
+                    for (int li = 0; li < config.lambdaDirectedList.length; li++) {
+                        double lambdaDirected = config.lambdaDirectedList[li];
+                        for (int lni = 0; lni < config.lambdaNondirectedList.length; lni++) {
+                            double lambdaNondirected = config.lambdaNondirectedList[lni];
+                            errorContext = SARRunSummary.ErrorContext.forSimulation(
+                                    batchIndex, itr, rho0, lambdaDirected, lambdaNondirected, config.mu);
+                            stage = "simulation";
+
+                            int[] thresholdList = new int[g.n];
+                            Arrays.fill(thresholdList, config.threshold);
+
+                            runSimulation(g, config, lambdaDirected, lambdaNondirected, config.mu, rho0,
+                                    thresholdList, batchIndex, itr, resultsPath);
+
+                            done.incrementAndGet();
+                            summary.recordSimulationCompleted();
+                        }
+                    }
+                }
+            }
+
+            progressItr[batchIndex] = config.itrs;
+            summary.recordBatchCompleted(batchIndex, Instant.now());
+        } catch (RuntimeException | Error e) {
+            summary.recordError(stage, errorContext, e);
+            if (errorContext.iteration() != null) {
+                summary.recordSimulationFailed();
+            }
+            summary.recordBatchFailed(batchIndex, Instant.now());
+            throw e;
+        }
+    }
+
+    /** 設定に従って、ランダム化前のグラフを読み込むか生成する。 */
+    private static DirectedGraph loadGraph(SimulationConfig config, int batchIndex) {
         if (config.loadFromEdgeList) {
             Path networkPath = SwitchUtils.buildNetworkPath(
                     config.networkType, config.N,
@@ -106,59 +242,17 @@ public class SAR {
                 Path edgeListPath = resolveEdgeListPath(
                         Paths.get("out/edgelist"), networkPath,
                         config.randomizationMode.usesEdgeSwappedInput(), batchIndex);
-                g = DirectedGraph.loadFromEdgeList(config.networkType, edgeListPath);
+                return DirectedGraph.loadFromEdgeList(config.networkType, edgeListPath);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to load edge list for batch " + batchIndex, e);
             }
-        } else {
-            g = SwitchUtils.generateGraph(config.networkType, config.N,
-                    null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
-                    config.kuMin, config.kuMax,
-                    config.kuAve, config.gamma, config.m0, config.m, config.swapNum,
-                    config.gammaIn, config.gammaOut, config.corrA,
-                    GRAPH_BASE_SEED + batchIndex);
         }
-
-        g = applyRandomization(
-                g, config.randomizationMode,
-                GRAPH_RANDOMIZATION_BASE_SEED + batchIndex,
-                config.loadFromEdgeList);
-
-        if (config.writeEdgeList && !config.loadFromEdgeList) {
-            writeEdgeList(g, batchIndex, config);
-        }
-
-        if (!config.runSarSimulations) {
-            progressItr[batchIndex] = config.itrs;
-            done.incrementAndGet();
-            return;
-        }
-
-        Path resultsPath = prepareOutputPath(g, batchIndex, config);
-
-        for (int itr = 0; itr < config.itrs; itr++) {
-            progressItr[batchIndex] = itr;
-
-            for (int ri = 0; ri < config.rho0List.length; ri++) {
-                double rho0 = config.rho0List[ri];
-                for (int li = 0; li < config.lambdaDirectedList.length; li++) {
-                    double lambdaDirected = config.lambdaDirectedList[li];
-                    for (int lni = 0; lni < config.lambdaNondirectedList.length; lni++) {
-                        double lambdaNondirected = config.lambdaNondirectedList[lni];
-
-                        int[] thresholdList = new int[g.n];
-                        Arrays.fill(thresholdList, config.threshold);
-
-                        runSimulation(g, config, lambdaDirected, lambdaNondirected, config.mu, rho0,
-                                thresholdList, batchIndex, itr, resultsPath);
-
-                        done.incrementAndGet();
-                    }
-                }
-            }
-        }
-
-        progressItr[batchIndex] = config.itrs;
+        return SwitchUtils.generateGraph(config.networkType, config.N,
+                null, config.kdMin, config.kdMax, config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
+                config.kuMin, config.kuMax,
+                config.kuAve, config.gamma, config.m0, config.m, config.swapNum,
+                config.gammaIn, config.gammaOut, config.corrA,
+                GRAPH_BASE_SEED + batchIndex);
     }
 
     /**
@@ -223,11 +317,24 @@ public class SAR {
     /** 選択したモードをグラフへ適用する。 */
     static DirectedGraph applyRandomization(DirectedGraph graph, RandomizationMode mode,
             long seed, boolean loadedFromEdgeList) {
+        return applyRandomization(graph, mode, seed, loadedFromEdgeList, 1);
+    }
+
+    /** 選択したモードとサイズ倍率をグラフへ適用する。 */
+    static DirectedGraph applyRandomization(DirectedGraph graph, RandomizationMode mode,
+            long seed, boolean loadedFromEdgeList, int sizeMultiplier) {
         if (graph == null) {
             throw new IllegalArgumentException("graph must be non-null");
         }
         if (mode == null) {
             throw new IllegalArgumentException("mode must be non-null");
+        }
+        if (sizeMultiplier < 1) {
+            throw new IllegalArgumentException("sizeMultiplier must be at least 1");
+        }
+        if (mode != RandomizationMode.JOINT_DEGREE_CM && sizeMultiplier != 1) {
+            throw new IllegalArgumentException(
+                    "sizeMultiplier can exceed 1 only in JOINT_DEGREE_CM mode");
         }
 
         return switch (mode) {
@@ -235,18 +342,49 @@ public class SAR {
             case EDGE_SWAP -> loadedFromEdgeList ? graph : graph.randomizeByEdgeSwaps(seed);
             case SHUFFLE_IN_DEGREES -> graph.randomizeByShuffledDegreeSequence(DegreeSide.IN, seed);
             case SHUFFLE_OUT_DEGREES -> graph.randomizeByShuffledDegreeSequence(DegreeSide.OUT, seed);
+            case JOINT_DEGREE_CM -> sizeMultiplier == 1
+                    ? graph
+                    : graph.expandByRepeatedJointDegreeSequence(sizeMultiplier, seed);
         };
+    }
+
+    /** 倍率1では元ネットワークを使うため、出力上はランダム化なしとして扱う。 */
+    static RandomizationMode effectiveRandomizationMode(RandomizationMode mode, int sizeMultiplier) {
+        if (mode == null) {
+            throw new IllegalArgumentException("mode must be non-null");
+        }
+        if (sizeMultiplier < 1) {
+            throw new IllegalArgumentException("sizeMultiplier must be at least 1");
+        }
+        return mode == RandomizationMode.JOINT_DEGREE_CM && sizeMultiplier == 1
+                ? RandomizationMode.NONE
+                : mode;
+    }
+
+    private static int checkedExpandedSize(int originalSize, int multiplier, String quantity) {
+        if (multiplier < 1) {
+            throw new IllegalArgumentException("sizeMultiplier must be at least 1");
+        }
+        try {
+            return Math.multiplyExact(originalSize, multiplier);
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(
+                    "expanded " + quantity + " count exceeds the supported int range", e);
+        }
     }
 
     /** 最終的なランダマイズ方式を区別する出力パスを返す。 */
     static Path appendRandomizationPath(Path networkPath, RandomizationMode mode) {
+        return appendRandomizationPath(networkPath, mode, 1);
+    }
+
+    /** サイズ倍率を考慮して、最終的なランダマイズ方式を区別する出力パスを返す。 */
+    static Path appendRandomizationPath(Path networkPath, RandomizationMode mode, int sizeMultiplier) {
         if (networkPath == null) {
             throw new IllegalArgumentException("networkPath must be non-null");
         }
-        if (mode == null) {
-            throw new IllegalArgumentException("mode must be non-null");
-        }
-        return networkPath.resolve("randomization=" + mode.pathLabel());
+        RandomizationMode effectiveMode = effectiveRandomizationMode(mode, sizeMultiplier);
+        return networkPath.resolve("randomization=" + effectiveMode.pathLabel());
     }
 
     /**
@@ -265,7 +403,8 @@ public class SAR {
                 config.gamma, config.swapNum,
                 config.gammaIn, config.gammaOut, config.corrA);
         Path edgeListPath = Paths.get("out/edgelist")
-                .resolve(appendRandomizationPath(networkPath, config.randomizationMode))
+                .resolve(appendRandomizationPath(
+                        networkPath, config.randomizationMode, config.sizeMultiplier))
                 .resolve(String.format("%d.csv", batchIndex));
         try {
             g.writeEdgeList(edgeListPath);
@@ -275,15 +414,13 @@ public class SAR {
     }
 
     /**
-     * 出力パスを準備する。
+     * 実際のグラフサイズを使って出力ディレクトリを構築する。
      *
      * @param g グラフ
-     * @param batchIndex バッチインデックス
      * @param config シミュレーション設定
-     * @return 出力パス
+     * @return 出力ディレクトリ
      */
-    private static Path prepareOutputPath(DirectedGraph g, int batchIndex, SimulationConfig config) {
-        String idx = String.format("%02d", batchIndex);
+    private static Path buildOutputDirectory(DirectedGraph g, SimulationConfig config) {
         Path outputDir = SwitchUtils.buildSimulationOutputDir(config.optionPath, config.threshold);
         Path networkPath = SwitchUtils.buildNetworkPath(
                 config.networkType, g.n,
@@ -292,10 +429,15 @@ public class SAR {
                 config.kdMin, config.kdMax, config.kuMin, config.kuMax, config.m0, config.m,
                 config.gamma, config.swapNum,
                 config.gammaIn, config.gammaOut, config.corrA);
-        Path basePath = outputDir.resolve(
-                appendRandomizationPath(networkPath, config.randomizationMode));
+        return outputDir.resolve(
+                appendRandomizationPath(
+                        networkPath, config.randomizationMode, config.sizeMultiplier));
+    }
+
+    private static Path prepareOutputPath(Path outputDirectory, int batchIndex) {
+        String idx = String.format("%02d", batchIndex);
         return PathsEx.resolveIndexed(
-                basePath.resolve(String.format("results_%s.csv", idx)));
+                outputDirectory.resolve(String.format("results_%s.csv", idx)));
     }
 
     /**
@@ -361,7 +503,7 @@ public class SAR {
                         true);
             }
         } catch (IOException e) {
-            System.out.println("CSV output error (batch " + batchIndex + ", iteration " + itr + ", lambdaDirected "
+            System.err.println("CSV output error (batch " + batchIndex + ", iteration " + itr + ", rho0 "
                     + rho0 + ", lambdaDirected " + lambdaDirected + ", lambdaNondirected " + lambdaNondirected + ", mu "
                     + config.mu
                     + "): " + e.getMessage());
@@ -428,12 +570,72 @@ public class SAR {
         System.out.flush();
     }
 
+    private static SARRunSummary createRunSummary(
+            SimulationConfig config, long plannedSimulationCount, int parallelism) {
+        Map<String, Object> network = new LinkedHashMap<>();
+        network.put("name", config.networkType);
+        network.put("configuredN", config.N);
+        network.put("sizeMultiplier", config.sizeMultiplier);
+        network.put("randomizationMode",
+                effectiveRandomizationMode(config.randomizationMode, config.sizeMultiplier).pathLabel());
+        network.put("loadFromEdgeList", config.loadFromEdgeList);
+        network.put("writeEdgeList", config.writeEdgeList);
+
+        Map<String, Object> topology = new LinkedHashMap<>();
+        topology.put("kdMin", config.kdMin);
+        topology.put("kdMax", config.kdMax);
+        topology.put("kInMin", config.kInMin);
+        topology.put("kInMax", config.kInMax);
+        topology.put("kOutMin", config.kOutMin);
+        topology.put("kOutMax", config.kOutMax);
+        topology.put("kuAve", config.kuAve);
+        topology.put("kuMin", config.kuMin);
+        topology.put("kuMax", config.kuMax);
+        topology.put("m0", config.m0);
+        topology.put("m", config.m);
+        topology.put("gamma", config.gamma);
+        topology.put("swapNum", config.swapNum);
+        topology.put("gammaIn", config.gammaIn);
+        topology.put("gammaOut", config.gammaOut);
+        topology.put("corrA", config.corrA);
+        network.put("topologyParameters", topology);
+
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("rho0Values", config.rho0List);
+        parameters.put("lambdaDirectedValues", config.lambdaDirectedList);
+        parameters.put("lambdaNondirectedValues", config.lambdaNondirectedList);
+        parameters.put("lambdaDirectedMin", config.lambdaDirectedMin);
+        parameters.put("lambdaDirectedMax", config.lambdaDirectedMax);
+        parameters.put("lambdaDirectedStep", config.lambdaDirectedStep);
+        parameters.put("mu", config.mu);
+        parameters.put("threshold", config.threshold);
+        parameters.put("tMax", config.tMax);
+        parameters.put("dt", config.dt);
+
+        Map<String, Object> seeds = new LinkedHashMap<>();
+        seeds.put("rngBaseSeed", RNG_BASE_SEED);
+        seeds.put("simulationBaseSeed", SIM_BASE_SEED);
+        seeds.put("graphBaseSeed", GRAPH_BASE_SEED);
+        seeds.put("graphRandomizationBaseSeed", GRAPH_RANDOMIZATION_BASE_SEED);
+        seeds.put("nodeSeedOffset", SEED_OFFSET_NODES);
+        parameters.put("seeds", seeds);
+
+        Map<String, Object> execution = new LinkedHashMap<>();
+        execution.put("optionPath", config.optionPath);
+        execution.put("batchSize", config.batchSize);
+        execution.put("iterationsPerBatch", config.itrs);
+        execution.put("parallelism", parallelism);
+        execution.put("runSarSimulations", config.runSarSimulations);
+        execution.put("finalStateOnly", config.isFinal);
+        execution.put("useGillespie", config.useGillespie);
+
+        return new SARRunSummary(plannedSimulationCount, network, parameters, execution);
+    }
+
     /** SAR で使用するグラフランダマイズ方式。 */
     enum RandomizationMode {
-        NONE("none", false),
-        EDGE_SWAP("edge-swap", true),
-        SHUFFLE_IN_DEGREES("in-degree-shuffle", true),
-        SHUFFLE_OUT_DEGREES("out-degree-shuffle", true);
+        NONE("none", false), EDGE_SWAP("edge-swap", true), SHUFFLE_IN_DEGREES("in-degree-shuffle",
+                true), SHUFFLE_OUT_DEGREES("out-degree-shuffle", true), JOINT_DEGREE_CM("joint-degree-cm", false);
 
         private final String pathLabel;
         private final boolean usesEdgeSwappedInput;
@@ -460,6 +662,7 @@ public class SAR {
         final String networkType = "rev-ego-Twitter"; // ネットワークタイプ
         final String optionPath = "lambda-ugokasu-real-2"; // オプションパス
         final int N = 500_000; // 頂点数
+        final int sizeMultiplier = 1; // 実ネットワークの同時次数分布を使う場合の頂点数倍率
 
         // 次数パラメータ
         final int kdMin = 5; // 最小次数
