@@ -659,8 +659,8 @@ public class SAR {
      */
     private static class SimulationConfig {
         // ネットワークの基本設定
-        final String networkType = "rev-ego-Twitter"; // ネットワークタイプ
-        final String optionPath = "lambda-ugokasu-real-2"; // オプションパス
+        final String networkType = "DirectedCMOutPow"; // ネットワークタイプ
+        final String optionPath = "slide-time"; // オプションパス
         final int N = 500_000; // 頂点数
         final int sizeMultiplier = 1; // 実ネットワークの同時次数分布を使う場合の頂点数倍率
 
@@ -694,17 +694,17 @@ public class SAR {
          * out/edgelist/{networkPath}/randomization={mode}/{batchIndex}.csv
          * からグラフを読み込む（次数列シャッフル時は edge-swap 配下を使用）
          */
-        final boolean loadFromEdgeList = true;
-        final RandomizationMode randomizationMode = RandomizationMode.SHUFFLE_IN_DEGREES;
+        final boolean loadFromEdgeList = false;
+        final RandomizationMode randomizationMode = RandomizationMode.NONE;
         final boolean writeEdgeList = false; // 生成したネットワークのエッジリストを書き出すか
         final boolean runSarSimulations = true; // SAR シミュレーションを実行するか
 
         // 実行回数
         final int batchSize = 10; // バッチサイズ
-        final int itrs = 10; // イテレーション数
+        final int itrs = 2; // イテレーション数
 
         // SAR シミュレーション設定
-        final boolean isFinal = true; // 最終状態のみ出力するか
+        final boolean isFinal = false; // 最終状態のみ出力するか
         final double dt = 0.1; // isFinal == false の時は dt 刻みで記録する。
         final boolean useGillespie = false; // true: Gillespie方式, false: イベント駆動方式
         final double mu = 1.0; // 回復率
@@ -712,11 +712,11 @@ public class SAR {
 
         // 伝播率
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 2.0;
+        final double lambdaDirectedMax = 1.0;
         final double lambdaDirectedStep = 0.02;
-        final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
-                lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        // final double[] lambdaDirectedList = { 0.1, 0.2, 1.0, 2.0, 5.0, 10.0 };
+        // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
+        // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
+        final double[] lambdaDirectedList = { 2.0 };
 
         // final double lambdaNondirectedMin = 0.0;
         // final double lambdaNondirectedMax = 2.0;
@@ -733,7 +733,7 @@ public class SAR {
         // final int rho0Count = 100;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step);
         // final double[] rho0List = ArrayUtils.geomspace(rho0Min, rho0Max, rho0Count);
-        final double[] rho0List = { 1e-2, 1e-3, 1e-4 }; // 初期感染率のリスト
+        final double[] rho0List = { 0.1 }; // 初期感染率のリスト
         final int threshold = 3; // 閾値
     }
 }
