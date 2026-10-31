@@ -11,6 +11,20 @@ import org.junit.jupiter.api.Test;
 class SwitchUtilsTest {
 
     @Test
+    void baFactoryAssignsAttachmentParametersAndMatchesDirectGenerator() {
+        var params = SwitchUtils.GraphGeneratorParams.forBA(20, 3, 2);
+        org.junit.jupiter.api.Assertions.assertEquals(3, params.m0());
+        org.junit.jupiter.api.Assertions.assertEquals(2, params.m());
+        org.junit.jupiter.api.Assertions.assertNull(params.kuMin());
+        var graph = SwitchUtils.generateGraph(params, 42L);
+        var direct = sim.network.topology.undirected.BA.generate("BA", 20, 3, 2, 42L);
+        org.junit.jupiter.api.Assertions.assertEquals(direct.m, graph.m);
+        for (int i = 0; i < graph.m; i++) {
+            org.junit.jupiter.api.Assertions.assertEquals(direct.getOutNeighbor(i), graph.getOutNeighbor(i));
+        }
+    }
+
+    @Test
     void buildsAndGeneratesDirectedEr() {
         Path path = SwitchUtils.buildNetworkPath(
                 "DirectedER", 1_000,

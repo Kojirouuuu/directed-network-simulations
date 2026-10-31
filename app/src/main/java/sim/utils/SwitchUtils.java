@@ -407,8 +407,8 @@ public final class SwitchUtils {
                 }
 
                 public static GraphGeneratorParams forBA(int N, int m0, int m) {
-                        return new GraphGeneratorParams("BA", N, null, null, null, null, null, null, null, null, null,
-                                        m0, m, null, null, null, null, null, null);
+                        return new GraphGeneratorParams("BA", N, null, null, null, null, null, null, null,
+                                        null, null, null, null, m0, m, null, null, null, null);
                 }
 
                 /** ego-Twitter 用。N は無視され、デフォルトのエッジリストファイルから読み込む。 */
