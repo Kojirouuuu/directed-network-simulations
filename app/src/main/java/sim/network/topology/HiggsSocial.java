@@ -2,14 +2,9 @@ package sim.network.topology;
 
 import sim.network.DirectedGraph;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Higgs Twitter ソーシャルネットワークのエッジリストから有向グラフを読み込む。
@@ -57,46 +52,7 @@ public final class HiggsSocial {
      * @throws IOException ファイル読み込みエラー
      */
     public static DirectedGraph loadFromEdgeList(String name, Path path) throws IOException {
-        if (path == null) {
-            throw new IllegalArgumentException("path must be non-null");
-        }
-        List<int[]> rawEdges = new ArrayList<>();
-        Map<String, Integer> idToIndex = new LinkedHashMap<>();
-
-        try (BufferedReader reader = Files.newBufferedReader(path)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-                String[] parts = line.split("\\s+");
-                if (parts.length < 2) {
-                    continue;
-                }
-                String srcId = parts[0];
-                String dstId = parts[1];
-                int u = idToIndex.computeIfAbsent(srcId, k -> idToIndex.size());
-                int v = idToIndex.computeIfAbsent(dstId, k -> idToIndex.size());
-                rawEdges.add(new int[] { u, v });
-            }
-        }
-
-        int n = idToIndex.size();
-        int m = rawEdges.size();
-        int[] srcs = new int[m];
-        int[] dsts = new int[m];
-        boolean[] isUndirected = new boolean[m];
-
-        for (int i = 0; i < m; i++) {
-            int[] e = rawEdges.get(i);
-            srcs[i] = e[0];
-            dsts[i] = e[1];
-            isUndirected[i] = false;
-        }
-
-        String graphName = name != null ? name : path.getFileName().toString();
-        return DirectedGraph.fromEdgeListWithUndirectedFlag(graphName, n, srcs, dsts, isUndirected);
+        return DirectedGraph.loadFromEdgeList(name, path);
     }
 
     /**
