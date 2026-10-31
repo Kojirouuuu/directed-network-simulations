@@ -258,28 +258,31 @@ public final class PowPow {
      */
     private static void correlateBySwap(int[] ko, int[] ki, int swapNum, long seed) {
         int n = ko.length;
+        if (swapNum == Integer.MIN_VALUE) {
+            throw new IllegalArgumentException("swapNum magnitude is too large");
+        }
+        if (swapNum == 0) {
+            return;
+        }
         int nTrials = Math.abs(swapNum);
         boolean positive = (swapNum > 0);
 
         final int mDir = (int) sum(ko); // Σko = Σki が保証済み
+        // ko never changes during the swaps. Sampling this array is equivalent to
+        // rebuilding it on every trial, while avoiding O(mDir * |swapNum|) work.
+        int[] outStubs = new int[mDir];
+        int pOut = 0;
+        for (int u = 0; u < n; u++) {
+            Arrays.fill(outStubs, pOut, pOut + ko[u], u);
+            pOut += ko[u];
+        }
+        if (pOut != mDir || sum(ki) != mDir) {
+            throw new IllegalStateException("Directed stub count mismatch");
+        }
 
         Random rng = new Random(seed);
 
         for (int t = 0; t < nTrials; t++) {
-            int[] outStubs = new int[mDir];
-            int[] inStubs = new int[mDir];
-            int pOut = 0, pIn = 0;
-            for (int u = 0; u < n; u++) {
-                for (int tt = 0; tt < ko[u]; tt++)
-                    outStubs[pOut++] = u;
-                for (int tt = 0; tt < ki[u]; tt++)
-                    inStubs[pIn++] = u;
-            }
-            if (pOut != mDir || pIn != mDir) {
-                throw new IllegalStateException(
-                        "Directed stub count mismatch: pOut=" + pOut + ", pIn=" + pIn + ", mDir=" + mDir);
-            }
-
             int i = outStubs[rng.nextInt(mDir)];
             int j = outStubs[rng.nextInt(mDir)];
             if (i == j)
