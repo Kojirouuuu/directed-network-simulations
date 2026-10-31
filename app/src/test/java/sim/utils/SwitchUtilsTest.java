@@ -25,6 +25,16 @@ class SwitchUtilsTest {
     }
 
     @Test
+    void namedParametersPreservePathsAndAllowActualGraphSize() {
+        var params = SwitchUtils.GraphGeneratorParams.builder("BA", 20).m0(3).m(2).build();
+        org.junit.jupiter.api.Assertions.assertEquals(java.nio.file.Path.of("BA/N=20/m0=3/m=2"),
+                SwitchUtils.buildNetworkPath(params));
+        org.junit.jupiter.api.Assertions.assertEquals(java.nio.file.Path.of("BA/N=40/m0=3/m=2"),
+                SwitchUtils.buildNetworkPath(params.withN(40)));
+        org.junit.jupiter.api.Assertions.assertEquals(20, params.N());
+    }
+
+    @Test
     void buildsAndGeneratesDirectedEr() {
         Path path = SwitchUtils.buildNetworkPath(
                 "DirectedER", 1_000,

@@ -562,3 +562,14 @@ out/sar/{optionPath}/threshold={T}/{networkType}/N={N}/{networkSpecific}/results
 ```
 out/sar/in-out/threshold=3/PowPow/N=500000/gamma=2.50/kdMin=5/kdMax=1000/swapNum=0/results_00.csv
 ```
+
+## Java内部の責務分担
+
+実験条件は従来どおり各エントリポイントの設定欄で編集します。SAR・グラフ生成・パーコレーションの実行方法と出力形式は維持しています。
+
+- `SwitchUtils.GraphGeneratorParams.builder(type, n)` は名前付きで生成条件を組み立てます。同じ設定を `generateGraph` と `buildNetworkPath` に渡せます。実頂点数でパスを作る場合は `withN` を使います。従来の引数形式も利用できます。
+- `SARGraphPreparation` はSARのグラフ準備とファイル探索、`InitialAdopters` は固定シードでの初期感染者選択を担当します。計算方式と記録間隔の選択は `SAR` 内で行います。
+- `DirectedGraph` はCSR表現と公開APIを保持し、内部の `GraphOperations` と `FflRewiringState` に指標計算・変換を委譲します。実ネットワークの読み込みは共通のパーサーを使用します。
+- `SARResult` は結果データと公開APIを保持し、CSV出力を `SARResultCsvWriter` に委譲します。
+
+固定シードの互換性テストは、整理前のコードから取得した辺の順序と両シミュレーターの時系列・感染時刻のSHA-256を基準にしています。BA設定ヘルパーの引数割り当て修正は、専用の回帰テストで検証します。

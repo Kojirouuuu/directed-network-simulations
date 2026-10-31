@@ -1,5 +1,6 @@
 package sim;
 
+import sim.utils.ProgressBar;
 import sim.network.DirectedGraph;
 import sim.simulation.BondPercolationResult;
 import sim.simulation.BondPercolationSimulator;
@@ -22,7 +23,6 @@ import java.util.stream.IntStream;
  * 並列処理によるバッチシミュレーションを実行する。
  */
 public class BondPercolation {
-    private static final int PROGRESS_BAR_LENGTH = 100;
     private static final int PROGRESS_UPDATE_INTERVAL_MS = 100;
 
     private static final long SIM_BASE_SEED = 12345L;
@@ -58,18 +58,32 @@ public class BondPercolation {
         System.out.println("All tasks completed");
     }
 
+    private static SwitchUtils.GraphGeneratorParams networkParameters(SimulationConfig config) {
+        return SwitchUtils.GraphGeneratorParams.builder(config.networkType, config.N)
+                .kdMin(config.kdMin)
+                .kdMax(config.kdMax)
+                .kInMin(config.kInMin)
+                .kInMax(config.kInMax)
+                .kOutMin(config.kOutMin)
+                .kOutMax(config.kOutMax)
+                .kuAve(config.kuAve)
+                .gamma(config.gamma)
+                .kuMin(config.kuMin)
+                .kuMax(config.kuMax)
+                .m0(config.m0)
+                .m(config.m)
+                .swapNum(config.swapNum)
+                .gammaIn(config.gammaIn)
+                .gammaOut(config.gammaOut)
+                .corrA(config.corrA).build();
+    }
+
     private static void processBatch(int batchIndex, SimulationConfig config, AtomicLong done) {
         DirectedGraph g;
         Path resultsPath;
 
         if (config.loadFromEdgeList) {
-            Path networkPath = SwitchUtils.buildNetworkPath(
-                    config.networkType, config.N,
-                    null, config.kuAve,
-                    config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
-                    config.kdMin, config.kdMax, config.kuMin, config.kuMax,
-                    config.m0, config.m, config.gamma, config.swapNum,
-                    config.gammaIn, config.gammaOut, config.corrA);
+            Path networkPath = SwitchUtils.buildNetworkPath(networkParameters(config));
             Path edgeListPath = Paths.get("out/edgelist").resolve(networkPath)
                     .resolve(String.format("%d.csv", batchIndex));
             try {
@@ -78,13 +92,7 @@ public class BondPercolation {
                 throw new RuntimeException("Failed to load edge list: " + edgeListPath, e);
             }
         } else {
-            g = SwitchUtils.generateGraph(config.networkType, config.N,
-                    null, config.kdMin, config.kdMax, config.kInMin, config.kInMax,
-                    config.kOutMin, config.kOutMax,
-                    config.kuMin, config.kuMax,
-                    config.kuAve, config.gamma, config.m0, config.m, config.swapNum,
-                    config.gammaIn, config.gammaOut, config.corrA,
-                    GRAPH_BASE_SEED + batchIndex);
+            g = SwitchUtils.generateGraph(networkParameters(config), GRAPH_BASE_SEED + batchIndex);
         }
 
         resultsPath = prepareOutputPath(g, batchIndex, config);
@@ -113,13 +121,7 @@ public class BondPercolation {
     private static Path prepareOutputPath(DirectedGraph g, int batchIndex, SimulationConfig config) {
         String idx = String.format("%02d", batchIndex);
         Path outputDir = SwitchUtils.buildPercolationOutputDir(config.optionPath);
-        Path networkPath = SwitchUtils.buildNetworkPath(
-                config.networkType, g.n,
-                null, config.kuAve,
-                config.kInMin, config.kInMax, config.kOutMin, config.kOutMax,
-                config.kdMin, config.kdMax, config.kuMin, config.kuMax,
-                config.m0, config.m, config.gamma, config.swapNum,
-                config.gammaIn, config.gammaOut, config.corrA);
+        Path networkPath = SwitchUtils.buildNetworkPath(networkParameters(config).withN(g.n));
         Path basePath = outputDir.resolve(networkPath);
         return PathsEx.resolveIndexed(basePath.resolve(String.format("results_%s.csv", idx)));
     }
@@ -152,12 +154,7 @@ public class BondPercolation {
     }
 
     private static void renderTotalProgressBar(long done, long total) {
-        int filled = (total == 0) ? PROGRESS_BAR_LENGTH
-                : (int) Math.min(PROGRESS_BAR_LENGTH, (done * PROGRESS_BAR_LENGTH) / total);
-        int percent = (total == 0) ? 100 : (int) Math.min(100, (done * 100) / total);
-        String bar = "#".repeat(filled) + "-".repeat(PROGRESS_BAR_LENGTH - filled);
-        System.out.print("\033[2K\rProgress [%s] %3d%% (%d/%d)".formatted(bar, percent, done, total));
-        System.out.flush();
+        ProgressBar.render(done, total);
     }
 
     private static class SimulationConfig {

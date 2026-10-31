@@ -145,6 +145,11 @@ public final class SwitchUtils {
                 return Paths.get(String.format("%s/N=%d/%s", networkType, N, networkSpecific));
         }
 
+        /** Builds a path using the same named parameters as graph generation. */
+        public static Path buildNetworkPath(GraphGeneratorParams params) {
+                return buildNetworkPath(params.networkType(), params.N(), params.kdAve(), params.kuAve(), params.kInMin(), params.kInMax(), params.kOutMin(), params.kOutMax(), params.kdMin(), params.kdMax(), params.kuMin(), params.kuMax(), params.m0(), params.m(), params.gamma(), params.swapNum(), params.gammaIn(), params.gammaOut(), params.corrA());
+        }
+
         /**
          * ネットワークパスにランダム化方式の識別子を追加する。
          *
@@ -352,6 +357,55 @@ public final class SwitchUtils {
                         Double gammaIn,
                         Double gammaOut,
                         Double corrA) {
+                public GraphGeneratorParams withN(int size) {
+                        return new GraphGeneratorParams(networkType, size, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, kuMin, kuMax, m0, m, swapNum, gammaIn, gammaOut, corrA);
+                }
+
+                public static Builder builder(String networkType, int n) {
+                        return new Builder(networkType, n);
+                }
+
+                public static final class Builder {
+                        private String networkType;
+                        private int N;
+                        private Integer kdAve;
+                        private Integer kdMin;
+                        private Integer kdMax;
+                        private Integer kInMin;
+                        private Integer kInMax;
+                        private Integer kOutMin;
+                        private Integer kOutMax;
+                        private Double kuAve;
+                        private Double gamma;
+                        private Integer kuMin;
+                        private Integer kuMax;
+                        private Integer m0;
+                        private Integer m;
+                        private Integer swapNum;
+                        private Double gammaIn;
+                        private Double gammaOut;
+                        private Double corrA;
+                        private Builder(String networkType, int n) { this.networkType = networkType; this.N = n; }
+                        public Builder kdAve(Integer value) { this.kdAve = value; return this; }
+                        public Builder kdMin(Integer value) { this.kdMin = value; return this; }
+                        public Builder kdMax(Integer value) { this.kdMax = value; return this; }
+                        public Builder kInMin(Integer value) { this.kInMin = value; return this; }
+                        public Builder kInMax(Integer value) { this.kInMax = value; return this; }
+                        public Builder kOutMin(Integer value) { this.kOutMin = value; return this; }
+                        public Builder kOutMax(Integer value) { this.kOutMax = value; return this; }
+                        public Builder kuAve(Double value) { this.kuAve = value; return this; }
+                        public Builder gamma(Double value) { this.gamma = value; return this; }
+                        public Builder kuMin(Integer value) { this.kuMin = value; return this; }
+                        public Builder kuMax(Integer value) { this.kuMax = value; return this; }
+                        public Builder m0(Integer value) { this.m0 = value; return this; }
+                        public Builder m(Integer value) { this.m = value; return this; }
+                        public Builder swapNum(Integer value) { this.swapNum = value; return this; }
+                        public Builder gammaIn(Double value) { this.gammaIn = value; return this; }
+                        public Builder gammaOut(Double value) { this.gammaOut = value; return this; }
+                        public Builder corrA(Double value) { this.corrA = value; return this; }
+                        public GraphGeneratorParams build() { return new GraphGeneratorParams(networkType, N, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, kuMin, kuMax, m0, m, swapNum, gammaIn, gammaOut, corrA); }
+                }
+
                 public static GraphGeneratorParams forDirectedCM(int N, int kdAve) {
                         return new GraphGeneratorParams("DirectedCM", N, kdAve, null, null, null, null, null, null,
                                         null, null, null, null, null, null, null, null, null, null);
@@ -407,8 +461,7 @@ public final class SwitchUtils {
                 }
 
                 public static GraphGeneratorParams forBA(int N, int m0, int m) {
-                        return new GraphGeneratorParams("BA", N, null, null, null, null, null, null, null,
-                                        null, null, null, null, m0, m, null, null, null, null);
+                        return builder("BA", N).m0(m0).m(m).build();
                 }
 
                 /** ego-Twitter 用。N は無視され、デフォルトのエッジリストファイルから読み込む。 */

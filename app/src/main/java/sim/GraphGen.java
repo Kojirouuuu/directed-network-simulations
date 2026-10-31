@@ -69,23 +69,34 @@ public class GraphGen {
 
     private static void generateAndWrite(int workerId, int runIndex) {
         try {
-            DirectedGraph g = SwitchUtils.generateGraph(networkType, n,
-                    null, kMin, kMax, kInMin, kInMax, kOutMin,
-                    kOutMax,
-                    kuMin, kuMax,
-                    kuAve, gamma, m0, m, swapNum,
-                    gammaIn, gammaOut, corrA,
-                    seed + runIndex);
+            DirectedGraph g = SwitchUtils.generateGraph(SwitchUtils.GraphGeneratorParams.builder(networkType, n)
+                    .kdMin(kMin)
+                    .kdMax(kMax)
+                    .kInMin(kInMin)
+                    .kInMax(kInMax)
+                    .kOutMin(kOutMin)
+                    .kOutMax(kOutMax)
+                    .kuMin(kuMin)
+                    .kuMax(kuMax)
+                    .kuAve(kuAve)
+                    .gamma(gamma)
+                    .m0(m0)
+                    .m(m)
+                    .swapNum(swapNum)
+                    .gammaIn(gammaIn)
+                    .gammaOut(gammaOut)
+                    .corrA(corrA).build(), seed + runIndex);
 
             if (randomizeByEdgeSwaps) {
                 g = g.randomizeByEdgeSwaps(randomSwapSeed + runIndex);
             }
 
             // パス構成: out/edgelist/{NetworkPath}/randomization={mode}/{filename}
-            Path networkPath = SwitchUtils.buildNetworkPath(networkType, g.n,
-                    null, null, null, null, null, null, kMin, kMax, null, null, null, null,
-                    gamma, swapNum,
-                    null, null, null);
+            Path networkPath = SwitchUtils.buildNetworkPath(SwitchUtils.GraphGeneratorParams.builder(networkType, g.n)
+                    .kdMin(kMin)
+                    .kdMax(kMax)
+                    .gamma(gamma)
+                    .swapNum(swapNum).build());
             Path outputDir = Paths.get("out/edgelist")
                     .resolve(SwitchUtils.appendRandomizationPath(networkPath, randomizeByEdgeSwaps))
                     .resolve(String.format(Locale.ROOT, "reciprocity=%.6f", targetReciprocity));
