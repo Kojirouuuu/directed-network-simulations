@@ -421,21 +421,21 @@ static int find_roots(Func f, const DegreeDist *D, const DynamicsConfig *p, cons
 
 int main(void) {
     EBCMConfig cfg = {
-        // .ki = {.mean = 12.0, .min = 5, .max = 707, .gamma = 2.5, .type = "Pow"},
-        .ki = {.mean = 12.50, .min = 5, .max = 707, .gamma = 2.5, .type = "Poi"},
+        .ki = {.mean = 12.50, .min = 5, .max = 707, .gamma = 2.5, .type = "Pow"},
+        // .ki = {.mean = 12.50, .min = 5, .max = 707, .gamma = 2.5, .type = "Poi"},
     };
     double mu = 1.0;
 
-    const int T_list[] = {2, 3};
+    const int T_list[] = {3};
     const int T_count = (int)(sizeof(T_list) / sizeof(T_list[0]));
 
     const double lambda_d_min = 0.0;
-    const double lambda_d_max = 4.0;
-    const double lambda_d_step = 0.004;
+    const double lambda_d_max = 2.0;
+    const double lambda_d_step = 0.008;
 
     const double rho0_min = 0.00;
-    const double rho0_max = 1.00;
-    const double rho0_step = 0.0002;
+    const double rho0_max = 0.50;
+    const double rho0_step = 0.0004;
 
     const double theta_search_step = 0.005; /* g_d=0 の根探索の刻み */
 
@@ -633,7 +633,7 @@ int main(void) {
                 double g_d_check = g_d(D, &dynamics, Binom, root);
                 double g_d_prime_check = g_d_prime(D, &dynamics, Binom, root);
                 if (root <= 1.0 && root >= 0.0 && delta < delta_min_prime_prime &&
-                    fabs(g_d_prime_check) < 4 * 1e-3 && fabs(g_d_check) < 4 * 1e-3) {
+                    fabs(g_d_prime_check) < 1e-3 && fabs(g_d_check) < 1e-3) {
                     prime_prime_found = true;
                     delta_min_prime_prime = delta;
                 }
