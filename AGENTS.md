@@ -39,6 +39,19 @@ Generated outputs go under `build/`, `app/out/`, or `out/`; keep them out of com
 
 Use the Gradle wrapper rather than a system Gradle installation.
 
+## Simulation Workflow
+
+Follow these rules whenever the user requests a simulation experiment:
+
+- Reuse the existing simulation code and change its parameters. Do not create new Java files or experiment entry points for a simulation request. This restriction does not apply when code changes or refactoring are the main task.
+- Run simulations through the existing scripts in `scripts/`, such as `bash scripts/run-sar.sh`, `bash scripts/run-graphgen.sh`, or `bash scripts/run-bondpercolation.sh`.
+- Use the same simulation implementation for every condition in a comparison. For example, to study the effect of a scale-free power-law exponent, run that implementation for each confirmed `gamma`, keeping other comparison conditions consistent.
+- Ask the user before execution if any simulation parameter is uncertain, including parameters for the small-scale test. Do not treat current source defaults as confirmed choices. Choose an appropriate `optionPath` yourself so the experiment is identifiable and its outputs do not mix with existing results.
+- Use `test-notebooks/` as the reference for visualization. If useful, copy an existing notebook into `test-notebooks/temp/<experiment-name>/`, change its parameters and input paths, and execute its cells. Preserve the original notebook.
+- First test the entire workflow on a small configuration: simulation, output loading, aggregation, and plotting. Verify that the configuration, data, and figures serve the intended comparison before starting the large run.
+- If results are clearly abnormal, show the user the configuration, observations, and concerns, and wait for clarification before proceeding to the large run.
+- If the small-scale test has no apparent problems, delete only the test data, figures, and other result artifacts created by that test, then run the confirmed large-scale configuration without asking for another execution confirmation. Keep test outputs separate so cleanup cannot remove existing research data or original notebooks.
+
 ## Coding Style & Naming Conventions
 
 Java code uses 4-space indentation, package-private tests, and descriptive `UpperCamelCase` class names. Methods, fields, and local variables use `lowerCamelCase`; constants use `UPPER_SNAKE_CASE`. Prefer deterministic seeds for simulation code and tests. Add new topology generators under `sim.network.topology` and wire them through `SwitchUtils.generateGraph` and `SwitchUtils.buildNetworkPath`.
