@@ -51,29 +51,6 @@ task runSAR(type: JavaExec) {
     mainClass = 'sim.SAR'
 }
 
-task runSwapCorrelationSAR(type: JavaExec) {
-    group = 'application'
-    description = 'Runs the PowPow in/out-degree correlation SAR experiment'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'sim.SwapCorrelationSAR'
-}
-
-// 入次数・出次数の Pow/Poi 4通りを比較するSAR実験
-task runDegreeDistributionSAR(type: JavaExec) {
-    group = 'application'
-    description = 'Runs the degree-distribution comparison SAR simulation'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'sim.DegreeDistributionSAR'
-}
-
-// ネットワーク生成パラメータと選択したリワイヤリング指標を比較するSAR実験
-task runNetworkSweepSAR(type: JavaExec) {
-    group = 'application'
-    description = 'Runs the network-parameter and rewiring-metric sweep SAR simulation'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'sim.NetworkSweepSAR'
-}
-
 // GraphGen クラスを実行するカスタムタスク
 task runGraphGen(type: JavaExec) {
     group = 'application'
