@@ -66,3 +66,10 @@ task runBondPercolation(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'sim.BondPercolation'
 }
+
+tasks.register('runSPIR', JavaExec) {
+    group = 'application'
+    description = 'Runs the SPIR or SIR simulation'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'sim.SPIR'
+}
