@@ -40,18 +40,24 @@ final class SARGraphPreparation {
 
     /** 設定に従って、ランダム化前のグラフを読み込むか生成する。 */
     static DirectedGraph loadGraph(SimulationConfig config, int batchIndex) {
-        if (config.loadFromEdgeList) {
-            Path networkPath = SwitchUtils.buildNetworkPath(networkParameters(config));
+        return loadGraph(networkParameters(config), config.loadFromEdgeList,
+                config.randomizationMode, SAR.GRAPH_BASE_SEED, batchIndex);
+    }
+
+    /** Model-independent graph loading shared by SAR and SPIR. */
+    static DirectedGraph loadGraph(SwitchUtils.GraphGeneratorParams parameters, boolean loadFromEdgeList,
+            RandomizationMode mode, long graphSeed, int batchIndex) {
+        if (loadFromEdgeList) {
+            Path networkPath = SwitchUtils.buildNetworkPath(parameters);
             try {
-                Path edgeListPath = resolveEdgeListPath(
-                        Paths.get("out/edgelist"), networkPath,
-                        config.randomizationMode.usesEdgeSwappedInput(), batchIndex);
-                return DirectedGraph.loadFromEdgeList(config.networkType, edgeListPath);
+                Path edgeListPath = resolveEdgeListPath(Paths.get("out/edgelist"), networkPath,
+                        mode.usesEdgeSwappedInput(), batchIndex);
+                return DirectedGraph.loadFromEdgeList(parameters.networkType(), edgeListPath);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to load edge list for batch " + batchIndex, e);
             }
         }
-        return SwitchUtils.generateGraph(networkParameters(config), SAR.GRAPH_BASE_SEED + batchIndex);
+        return SwitchUtils.generateGraph(parameters, graphSeed + batchIndex);
     }
 
     /**
