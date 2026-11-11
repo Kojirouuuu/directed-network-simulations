@@ -11,6 +11,39 @@ import org.junit.jupiter.api.Test;
 class SwitchUtilsTest {
 
     @Test
+    void twoPointParametersGenerateGraphAndPreservePathsAcrossLocales() {
+        var originalLocale = java.util.Locale.getDefault();
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMANY);
+            for (double p : new double[] {0.5, 0.125, 0.12500000000000003, 1e-7}) {
+                var params = SwitchUtils.GraphGeneratorParams.builder("TwoPointDirectedCM", 10_000_000)
+                        .k1(2).k2(8).p(p).r(-0.0).build();
+                String decimal = p == 1e-7 ? "0.0000001" : Double.toString(p);
+                var expected = Path.of("TwoPointDirectedCM/N=10000000/k1=2/k2=8/p=" + decimal + "/r=0");
+                assertEquals(expected, SwitchUtils.buildNetworkPath(params));
+                assertEquals(expected.resolve("randomization=none"),
+                        SwitchUtils.appendRandomizationPath(expected, false));
+                assertEquals(expected.resolve("randomization=edge-swap"),
+                        SwitchUtils.appendRandomizationPath(expected, true));
+            }
+            var params = SwitchUtils.GraphGeneratorParams.builder("TwoPointDirectedCM", 100)
+                    .k1(2).k2(8).p(0.5).r(0.5).build();
+            assertEquals(500, SwitchUtils.generateGraph(params, 42).m);
+            assertEquals(Path.of("TwoPointDirectedCM/N=200/k1=2/k2=8/p=0.5/r=0.5"),
+                    SwitchUtils.buildNetworkPath(params.withN(200)));
+        } finally {
+            java.util.Locale.setDefault(originalLocale);
+        }
+    }
+
+    @Test
+    void twoPointDispatchRequiresAllParameters() {
+        var missing = SwitchUtils.GraphGeneratorParams.builder("TwoPointDirectedCM", 100).build();
+        assertThrows(IllegalArgumentException.class, () -> SwitchUtils.generateGraph(missing, 42));
+        assertThrows(IllegalArgumentException.class, () -> SwitchUtils.buildNetworkPath(missing));
+    }
+
+    @Test
     void baFactoryAssignsAttachmentParametersAndMatchesDirectGenerator() {
         var params = SwitchUtils.GraphGeneratorParams.forBA(20, 3, 2);
         org.junit.jupiter.api.Assertions.assertEquals(3, params.m0());

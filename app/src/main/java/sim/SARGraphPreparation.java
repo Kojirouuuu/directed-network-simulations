@@ -34,7 +34,7 @@ final class SARGraphPreparation {
                 .swapNum(config.swapNum)
                 .gammaIn(config.gammaIn)
                 .gammaOut(config.gammaOut)
-                .corrA(config.corrA).build();
+                .corrA(config.corrA).k1(config.k1).k2(config.k2).p(config.p).r(config.r).build();
     }
 
 

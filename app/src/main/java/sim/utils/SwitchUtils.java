@@ -14,6 +14,7 @@ import sim.network.topology.RevEgoTwitter;
 import sim.network.topology.RevGplus;
 import sim.network.topology.RevHiggsSocial;
 import sim.network.topology.SameInOut;
+import sim.network.topology.TwoPointDirectedCM;
 import sim.network.topology.SchwartzDirectedSF;
 import sim.network.topology.undirected.CM;
 import sim.network.topology.undirected.ER;
@@ -145,8 +146,22 @@ public final class SwitchUtils {
                 return Paths.get(String.format("%s/N=%d/%s", networkType, N, networkSpecific));
         }
 
+        private static String decimal(double value) {
+                return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+        }
+
         /** Builds a path using the same named parameters as graph generation. */
         public static Path buildNetworkPath(GraphGeneratorParams params) {
+                if (params.networkType().equals("TwoPointDirectedCM")) {
+                        int k1 = requireNonNull(params.k1(), "TwoPointDirectedCM requires k1");
+                        int k2 = requireNonNull(params.k2(), "TwoPointDirectedCM requires k2");
+                        double p = requireNonNull(params.p(), "TwoPointDirectedCM requires p");
+                        double r = requireNonNull(params.r(), "TwoPointDirectedCM requires r");
+                        if (k1 < 1 || k2 <= k1) throw new IllegalArgumentException("require 1 <= k1 < k2");
+                        TwoPointDirectedCM.degreePairCounts(params.N(), p, r);
+                        return Paths.get("TwoPointDirectedCM", "N=" + params.N(), "k1=" + k1,
+                                        "k2=" + k2, "p=" + decimal(p), "r=" + decimal(r));
+                }
                 return buildNetworkPath(params.networkType(), params.N(), params.kdAve(), params.kuAve(), params.kInMin(), params.kInMax(), params.kOutMin(), params.kOutMax(), params.kdMin(), params.kdMax(), params.kuMin(), params.kuMax(), params.m0(), params.m(), params.gamma(), params.swapNum(), params.gammaIn(), params.gammaOut(), params.corrA());
         }
 
@@ -279,6 +294,11 @@ public final class SwitchUtils {
                 String name = params.networkType();
                 int N = params.N();
                 return switch (params.networkType()) {
+                        case "TwoPointDirectedCM" -> TwoPointDirectedCM.generate(name, N,
+                                        requireNonNull(params.k1(), "TwoPointDirectedCM requires k1"),
+                                        requireNonNull(params.k2(), "TwoPointDirectedCM requires k2"),
+                                        requireNonNull(params.p(), "TwoPointDirectedCM requires p"),
+                                        requireNonNull(params.r(), "TwoPointDirectedCM requires r"), seed);
                         case "DirectedCM" -> DirectedCM.generate(name, N,
                                         requireNonNull(params.kdAve(), "DirectedCM requires kdAve"), seed);
                         case "DirectedCMInPow" -> DirectedCMInPow.generate(name, N,
@@ -356,9 +376,17 @@ public final class SwitchUtils {
                         Integer swapNum,
                         Double gammaIn,
                         Double gammaOut,
-                        Double corrA) {
+                        Double corrA, Integer k1, Integer k2, Double p, Double r) {
+                public GraphGeneratorParams(String networkType, int N, Integer kdAve, Integer kdMin,
+                                Integer kdMax, Integer kInMin, Integer kInMax, Integer kOutMin,
+                                Integer kOutMax, Double kuAve, Double gamma, Integer kuMin, Integer kuMax,
+                                Integer m0, Integer m, Integer swapNum, Double gammaIn, Double gammaOut, Double corrA) {
+                        this(networkType, N, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax,
+                                        kuAve, gamma, kuMin, kuMax, m0, m, swapNum, gammaIn, gammaOut, corrA,
+                                        null, null, null, null);
+                }
                 public GraphGeneratorParams withN(int size) {
-                        return new GraphGeneratorParams(networkType, size, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, kuMin, kuMax, m0, m, swapNum, gammaIn, gammaOut, corrA);
+                        return new GraphGeneratorParams(networkType, size, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, kuMin, kuMax, m0, m, swapNum, gammaIn, gammaOut, corrA, k1, k2, p, r);
                 }
 
                 public static Builder builder(String networkType, int n) {
@@ -385,6 +413,8 @@ public final class SwitchUtils {
                         private Double gammaIn;
                         private Double gammaOut;
                         private Double corrA;
+                        private Integer k1, k2;
+                        private Double p, r;
                         private Builder(String networkType, int n) { this.networkType = networkType; this.N = n; }
                         public Builder kdAve(Integer value) { this.kdAve = value; return this; }
                         public Builder kdMin(Integer value) { this.kdMin = value; return this; }
@@ -403,7 +433,11 @@ public final class SwitchUtils {
                         public Builder gammaIn(Double value) { this.gammaIn = value; return this; }
                         public Builder gammaOut(Double value) { this.gammaOut = value; return this; }
                         public Builder corrA(Double value) { this.corrA = value; return this; }
-                        public GraphGeneratorParams build() { return new GraphGeneratorParams(networkType, N, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, kuMin, kuMax, m0, m, swapNum, gammaIn, gammaOut, corrA); }
+                        public Builder k1(Integer value) { k1 = value; return this; }
+                        public Builder k2(Integer value) { k2 = value; return this; }
+                        public Builder p(Double value) { p = value; return this; }
+                        public Builder r(Double value) { r = value; return this; }
+                        public GraphGeneratorParams build() { return new GraphGeneratorParams(networkType, N, kdAve, kdMin, kdMax, kInMin, kInMax, kOutMin, kOutMax, kuAve, gamma, kuMin, kuMax, m0, m, swapNum, gammaIn, gammaOut, corrA, k1, k2, p, r); }
                 }
 
                 public static GraphGeneratorParams forDirectedCM(int N, int kdAve) {

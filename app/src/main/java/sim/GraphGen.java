@@ -45,6 +45,10 @@ public class GraphGen {
     private static final double gammaOut = 2.5;
     private static final double corrA = 0.0;
 
+    // TwoPointDirectedCM: set all four when selecting this topology.
+    private static final Integer k1 = null, k2 = null;
+    private static final Double p = null, r = null;
+
     // リワイヤリング・乱数パラメータ
     private static final double targetReciprocity = 0.00;
     private static final long seed = 42L;
@@ -69,7 +73,7 @@ public class GraphGen {
 
     private static void generateAndWrite(int workerId, int runIndex) {
         try {
-            DirectedGraph g = SwitchUtils.generateGraph(SwitchUtils.GraphGeneratorParams.builder(networkType, n)
+            var parameters = SwitchUtils.GraphGeneratorParams.builder(networkType, n)
                     .kdMin(kMin)
                     .kdMax(kMax)
                     .kInMin(kInMin)
@@ -85,18 +89,15 @@ public class GraphGen {
                     .swapNum(swapNum)
                     .gammaIn(gammaIn)
                     .gammaOut(gammaOut)
-                    .corrA(corrA).build(), seed + runIndex);
+                    .corrA(corrA).k1(k1).k2(k2).p(p).r(r).build();
+            DirectedGraph g = SwitchUtils.generateGraph(parameters, seed + runIndex);
 
             if (randomizeByEdgeSwaps) {
                 g = g.randomizeByEdgeSwaps(randomSwapSeed + runIndex);
             }
 
             // パス構成: out/edgelist/{NetworkPath}/randomization={mode}/{filename}
-            Path networkPath = SwitchUtils.buildNetworkPath(SwitchUtils.GraphGeneratorParams.builder(networkType, g.n)
-                    .kdMin(kMin)
-                    .kdMax(kMax)
-                    .gamma(gamma)
-                    .swapNum(swapNum).build());
+            Path networkPath = SwitchUtils.buildNetworkPath(parameters.withN(g.n));
             Path outputDir = Paths.get("out/edgelist")
                     .resolve(SwitchUtils.appendRandomizationPath(networkPath, randomizeByEdgeSwaps))
                     .resolve(String.format(Locale.ROOT, "reciprocity=%.6f", targetReciprocity));

@@ -412,6 +412,10 @@ public class SAR {
         topology.put("gammaIn", config.gammaIn);
         topology.put("gammaOut", config.gammaOut);
         topology.put("corrA", config.corrA);
+        topology.put("k1", config.k1);
+        topology.put("k2", config.k2);
+        topology.put("p", config.p);
+        topology.put("r", config.r);
         network.put("topologyParameters", topology);
 
         Map<String, Object> parameters = new LinkedHashMap<>();
@@ -501,6 +505,10 @@ public class SAR {
         final Double gammaIn = gamma; // λ_in
         final Double gammaOut = gamma; // λ_out
         final Double corrA = null; // 相関確率 A ∈ [0, 1]
+
+        // TwoPointDirectedCM: set all four when selecting this topology.
+        final Integer k1 = null, k2 = null;
+        final Double p = null, r = null;
 
         // 入出力・グラフ処理
         /**

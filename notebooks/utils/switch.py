@@ -34,6 +34,10 @@ def build_network_path(
     gamma_in: Optional[float] = None,
     gamma_out: Optional[float] = None,
     corr_a: Optional[float] = None,
+    k1: Optional[int] = None,
+    k2: Optional[int] = None,
+    p: Optional[float] = None,
+    r: Optional[float] = None,
 ) -> Path:
     """
     ネットワークパス（シミュレーションディレクトリ以下の相対パス）を構築する。
@@ -60,7 +64,21 @@ def build_network_path(
     Raises:
         ValueError: 不明なネットワークタイプまたは必要なパラメータが None の場合
     """
-    if network_type == "DirectedCM":
+    if network_type == "TwoPointDirectedCM":
+        from decimal import Decimal
+        import math
+        for key, value in (("k1", k1), ("k2", k2), ("p", p), ("r", r)):
+            _require(value, network_type, key)
+        if not 1 <= k1 < k2 or not math.isfinite(p) or not 0 < p < 1:
+            raise ValueError("require 1 <= k1 < k2 and 0 < p < 1")
+        if not math.isfinite(r) or not -min(p/(1-p), (1-p)/p) <= r <= 1:
+            raise ValueError("r outside feasible range")
+        if N < 2 or not 0 < math.floor(N*p+0.5) < N:
+            raise ValueError("N too small to represent both degree classes")
+        def decimal(value):
+            return "0" if value == 0 else format(Decimal(str(value)).normalize(), "f")
+        network_specific = f"k1={k1}/k2={k2}/p={decimal(p)}/r={decimal(r)}"
+    elif network_type == "DirectedCM":
         _require(kd_ave, "DirectedCM", "kd_ave")
         network_specific = f"kdAve={kd_ave}"
     elif network_type == "DirectedCMInPow":
