@@ -650,3 +650,46 @@ CSV形式と出力先は維持しています。
 `(0,0), (0.2,0.2), …, (4,4)` の21組です。
 `mu1List × mu2List` の走査は維持します。`false` は従来の全組み合わせ走査です。
 SIRモードはこの設定によらず `lambda2List × mu2List` を走査します。
+
+### TwoPointDirectedCM：2点次数分布と同一頂点の入出次数相関
+
+入次数・出次数はともに確率 `p` で `k1`、確率 `1-p` で `k2` を取ります。
+`r` は同じ頂点の入次数・出次数の Pearson 相関係数です（隣接頂点間の相関とは異なります）。
+`1 <= k1 < k2`、`0 < p < 1`、`-min(p/(1-p), (1-p)/p) <= r <= 1` が必要です。
+自己ループ・多重辺を許容し、連結性は保証しません。
+
+```java
+var params = SwitchUtils.GraphGeneratorParams.builder("TwoPointDirectedCM", 1000)
+        .k1(2).k2(8).p(0.5).r(0.5).build();
+var graph = SwitchUtils.generateGraph(params, 42L);
+var counts = sim.network.topology.TwoPointDirectedCM.degreePairCounts(1000, 0.5, 0.5);
+System.out.println(counts.realizedP() + " " + counts.realizedR());
+```
+
+理論同時分布は `a=p*p+r*p*(1-p)` として、
+`P11=a, P12=P21=p-a, P22=1-2*p+a` です。
+有限サイズでは `n1=floor(N*p+0.5), n2=N-n1, pN=n1/N`、
+`b=clip(floor(N*pN*(1-pN)*(1-r)+0.5), 0, min(n1,n2))` とし、
+人数を `(n1-b,b,b,n2-b)` に固定します。
+両次数クラスの人数が正になるNが必要です。実現相関は `1-N*b/(n1*n2)` です。
+seedは頂点への割り当てと接続を変えますが、人数・平均次数は変えません。
+
+SARでは `SimulationConfig` の `networkType` と `k1,k2,p,r` を設定します。
+GraphGenにも同じ設定項目があります。相関比較には `randomizationMode=NONE` を使用してください。
+入次数列と出次数列を独立にシャッフルする変換は同一頂点の相関を変えます。
+出力パスには指定した `k1,k2,p,r` が入り、実現値とは区別します。
+
+ローカル解析用 `test-notebooks/utils/directed_ebcm.py` では次のように構築できます。
+
+```python
+from utils.directed_ebcm import build_two_point_joint_degree_dist, build_binom, Q_dir
+
+theory = build_two_point_joint_degree_dist(2, 8, 0.5, 0.5)
+finite = build_two_point_joint_degree_dist(2, 8, 0.5, 0.5, n=1000)
+# Javaとの比較にはfiniteを使う。既存のDynamicsConfigを指定する。
+# Q_dir(finite, dynamics, build_binom(finite.ki_max), eps=0.2)
+```
+
+同時分布の行が入次数、列が出次数で、次数値そのものが添字です。
+Java出力は既存の `build_joint_degree_dist_from_edge_list` でも読み込めます。
+この例は設定方法を示すもので、実験実行は別途条件を確定して行います。
