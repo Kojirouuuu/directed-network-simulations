@@ -172,16 +172,16 @@ public class BondPercolation {
     }
 
     private static class SimulationConfig {
-        final String networkType = "DirectedCMInPow";
-        final String optionPath = "2607";
-        final int N = 100_000;
+        final String networkType = "ER";
+        final String optionPath = "play";
+        final int N = (int) Math.pow(2, 16);
         final int kdMin = 2;
         final int kdMax = 1000;
         final int kInMin = 2;
         final int kInMax = (int) Math.sqrt(N);
         final int kOutMin = 2;
         final int kOutMax = (int) Math.sqrt(N);
-        final double kuAve = 0;
+        final double kuAve = 4.0;
         final int kuMin = 2;
         final int kuMax = (int) Math.sqrt(N);
         final int m0 = 6;
@@ -202,8 +202,8 @@ public class BondPercolation {
         final RandomizationMode randomizationMode = RandomizationMode.NONE;
         final int sizeMultiplier = 1; // JOINT_DEGREE_CM 用の頂点数倍率
 
-        final int batchSize = 16;
-        final int itrs = 8;
+        final int batchSize = 10;
+        final int itrs = 1000;
         final double pMin = 0.0;
         final double pMax = 1.0;
         final double pStep = 0.005;

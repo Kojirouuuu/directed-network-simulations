@@ -478,8 +478,8 @@ public class SAR {
     static class SimulationConfig {
         // ネットワークの基本設定
         final String networkType = "TwoPointDirectedCM"; // ネットワークタイプ
-        final String optionPath = "two-point-515-rho005-0075-20261111-main"; // オプションパス
-        final int N = 100000; // 頂点数
+        final String optionPath = "two-point-extreme-search-20261111/small"; // オプションパス
+        final int N = 5000; // 頂点数
         final int sizeMultiplier = 1; // 実ネットワークの同時次数分布を使う場合の頂点数倍率
 
         // 次数パラメータ
@@ -507,8 +507,8 @@ public class SAR {
         final Double corrA = null; // 相関確率 A ∈ [0, 1]
 
         // TwoPointDirectedCM: set all four when selecting this topology.
-        final Integer k1 = 5, k2 = 15;
-        final Double p = 0.5, r = 0.5;
+        final Integer k1 = 5, k2 = 105;
+        final Double p = 0.95, r = 1.0;
 
         // 入出力・グラフ処理
         /**
@@ -522,8 +522,8 @@ public class SAR {
         final boolean runSarSimulations = true; // SAR シミュレーションを実行するか
 
         // 実行回数
-        final int batchSize = 10; // バッチサイズ
-        final int itrs = 10; // イテレーション数
+        final int batchSize = 3; // バッチサイズ
+        final int itrs = 3; // イテレーション数
 
         // SAR シミュレーション設定
         final boolean isFinal = true; // 最終状態のみ出力するか
@@ -534,11 +534,11 @@ public class SAR {
 
         // 伝播率
         final double lambdaDirectedMin = 0.0;
-        final double lambdaDirectedMax = 8.0;
-        final double lambdaDirectedStep = 0.08;
+        final double lambdaDirectedMax = 10.0;
+        final double lambdaDirectedStep = 0.1;
         // final double[] lambdaDirectedList = ArrayUtils.arange(lambdaDirectedMin,
         // lambdaDirectedMax, lambdaDirectedStep); // 有向辺の感染率
-        final double[] lambdaDirectedList = {0.0,0.08,0.16,0.24,0.32,0.4,0.48,0.56,0.64,0.72,0.8,0.88,0.96,1.04,1.12,1.2,1.28,1.36,1.44,1.52,1.6,1.68,1.76,1.84,1.92,2.0,2.08,2.16,2.24,2.32,2.4,2.48,2.56,2.64,2.72,2.8,2.88,2.96,3.04,3.12,3.2,3.28,3.36,3.44,3.52,3.6,3.68,3.76,3.84,3.92,4.0,4.08,4.16,4.24,4.32,4.4,4.48,4.56,4.64,4.72,4.8,4.88,4.96,5.04,5.12,5.2,5.28,5.36,5.44,5.52,5.6,5.68,5.76,5.84,5.92,6.0,6.08,6.16,6.24,6.32,6.4,6.48,6.56,6.64,6.72,6.8,6.88,6.96,7.04,7.12,7.2,7.28,7.36,7.44,7.52,7.6,7.68,7.76,7.84,7.92,8.0};
+        final double[] lambdaDirectedList = {0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,3.0,3.1,3.2,3.3,3.4,3.5,3.6,3.7,3.8,3.9,4.0,4.1,4.2,4.3,4.4,4.5,4.6,4.7,4.8,4.9,5.0,5.1,5.2,5.3,5.4,5.5,5.6,5.7,5.8,5.9,6.0,6.1,6.2,6.3,6.4,6.5,6.6,6.7,6.8,6.9,7.0,7.1,7.2,7.3,7.4,7.5,7.6,7.7,7.8,7.9,8.0,8.1,8.2,8.3,8.4,8.5,8.6,8.7,8.8,8.9,9.0,9.1,9.2,9.3,9.4,9.5,9.6,9.7,9.8,9.9,10.0};
 
         final double lambdaNondirectedMin = 0.0;
         final double lambdaNondirectedMax = 2.0;
@@ -553,7 +553,7 @@ public class SAR {
         // final int rho0Count = 100;
         // final double[] rho0List = ArrayUtils.arange(rho0Min, rho0Max, rho0Step);
         // final double[] rho0List = ArrayUtils.geomspace(rho0Min, rho0Max, rho0Count);
-        final double[] rho0List = {0.05,0.075}; // 初期感染率のリスト
+        final double[] rho0List = {0.2}; // 初期感染率のリスト
         final int threshold = 3; // 閾値
     }
 }
