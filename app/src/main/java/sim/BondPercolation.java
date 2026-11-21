@@ -5,12 +5,12 @@ import sim.network.DirectedGraph;
 import sim.simulation.BondPercolationResult;
 import sim.simulation.BondPercolationSimulator;
 import sim.utils.ArrayUtils;
-import sim.utils.PathsEx;
 import sim.utils.SwitchUtils;
+import sim.SAR.RandomizationMode;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.Files;
 import java.util.Random;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
@@ -27,6 +27,7 @@ public class BondPercolation {
 
     private static final long SIM_BASE_SEED = 12345L;
     private static final long GRAPH_BASE_SEED = 42L;
+    private static final long RANDOMIZATION_BASE_SEED = 4242L;
 
     public static void main(String[] args) throws Exception {
         SimulationConfig config = new SimulationConfig();
@@ -47,8 +48,12 @@ public class BondPercolation {
         renderer.start();
 
         try (ForkJoinPool pool = new ForkJoinPool(parallelism)) {
+            DirectedGraph sharedGraph = config.randomizationMode == RandomizationMode.JOINT_DEGREE_CM
+                    ? SARGraphPreparation.loadGraph(networkParameters(config), config.loadFromEdgeList,
+                            config.randomizationMode, GRAPH_BASE_SEED, 0)
+                    : null;
             Future<?> future = pool.submit(() -> IntStream.range(0, config.batchSize).parallel()
-                    .forEach(batchIndex -> processBatch(batchIndex, config, done)));
+                    .forEach(batchIndex -> processBatch(batchIndex, config, sharedGraph, done)));
             future.get();
         } finally {
             running.set(false);
@@ -75,27 +80,19 @@ public class BondPercolation {
                 .swapNum(config.swapNum)
                 .gammaIn(config.gammaIn)
                 .gammaOut(config.gammaOut)
-                .corrA(config.corrA).build();
+                .corrA(config.corrA).k1(config.k1).k2(config.k2).p(config.p).r(config.r).build();
     }
 
-    private static void processBatch(int batchIndex, SimulationConfig config, AtomicLong done) {
-        DirectedGraph g;
-        Path resultsPath;
+    private static void processBatch(int batchIndex, SimulationConfig config,
+            DirectedGraph sharedGraph, AtomicLong done) {
+        DirectedGraph g = sharedGraph == null
+                ? SARGraphPreparation.loadGraph(networkParameters(config), config.loadFromEdgeList,
+                        config.randomizationMode, GRAPH_BASE_SEED, batchIndex)
+                : sharedGraph;
+        g = SARGraphPreparation.applyRandomization(g, config.randomizationMode,
+                RANDOMIZATION_BASE_SEED + batchIndex, config.loadFromEdgeList, config.sizeMultiplier);
 
-        if (config.loadFromEdgeList) {
-            Path networkPath = SwitchUtils.buildNetworkPath(networkParameters(config));
-            Path edgeListPath = Paths.get("out/edgelist").resolve(networkPath)
-                    .resolve(String.format("%d.csv", batchIndex));
-            try {
-                g = DirectedGraph.loadFromEdgeList(config.networkType, edgeListPath);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to load edge list: " + edgeListPath, e);
-            }
-        } else {
-            g = SwitchUtils.generateGraph(networkParameters(config), GRAPH_BASE_SEED + batchIndex);
-        }
-
-        resultsPath = prepareOutputPath(g, batchIndex, config);
+        OutputPaths paths = prepareOutputPaths(g, batchIndex, config);
 
         BondPercolationSimulator sim = new BondPercolationSimulator(g);
 
@@ -108,7 +105,9 @@ public class BondPercolation {
                         + pi;
                 BondPercolationResult res = sim.run(p, new Random(simSeed));
                 try {
-                    res.writeFinalStateCsv(resultsPath, batchIndex * config.itrs + itr, p, true);
+                    res.writeFinalStateCsv(paths.results(), batchIndex * config.itrs + itr, p, true);
+                    res.writeComponentSizeDistributionCsv(paths.componentSizes(),
+                            batchIndex * config.itrs + itr, p, true);
                 } catch (IOException e) {
                     throw new RuntimeException("CSV output error (batch=" + batchIndex
                             + ", itr=" + itr + ", p=" + p + "): " + e.getMessage(), e);
@@ -118,12 +117,27 @@ public class BondPercolation {
         }
     }
 
-    private static Path prepareOutputPath(DirectedGraph g, int batchIndex, SimulationConfig config) {
-        String idx = String.format("%02d", batchIndex);
+    private static OutputPaths prepareOutputPaths(DirectedGraph g, int batchIndex, SimulationConfig config) {
         Path outputDir = SwitchUtils.buildPercolationOutputDir(config.optionPath);
-        Path networkPath = SwitchUtils.buildNetworkPath(networkParameters(config).withN(g.n));
+        Path networkPath = SARGraphPreparation.buildNetworkOutputPath(
+                networkParameters(config), g.n, config.randomizationMode, config.sizeMultiplier);
         Path basePath = outputDir.resolve(networkPath);
-        return PathsEx.resolveIndexed(basePath.resolve(String.format("results_%s.csv", idx)));
+        return resolveOutputPaths(basePath, batchIndex);
+    }
+
+    record OutputPaths(Path results, Path componentSizes) {
+    }
+
+    static OutputPaths resolveOutputPaths(Path directory, int batchIndex) {
+        String idx = String.format(java.util.Locale.ROOT, "%02d", batchIndex);
+        for (int index = 0;; index++) {
+            String suffix = index == 0 ? "" : " (" + index + ")";
+            Path results = directory.resolve("results_" + idx + suffix + ".csv");
+            Path sizes = directory.resolve("component_sizes_" + idx + suffix + ".csv");
+            if (!Files.exists(results) && !Files.exists(sizes)) {
+                return new OutputPaths(results, sizes);
+            }
+        }
     }
 
     private static Thread createTotalProgressRenderer(AtomicLong done, long totalTasks, AtomicBoolean running) {
@@ -180,7 +194,13 @@ public class BondPercolation {
         final Double gammaOut = 3.3; // λ_out
         final Double corrA = null; // 相関確率 A ∈ [0, 1]
 
+        // TwoPointDirectedCM: set all four when selecting this topology.
+        final Integer k1 = null, k2 = null;
+        final Double p = null, r = null;
+
         final boolean loadFromEdgeList = false;
+        final RandomizationMode randomizationMode = RandomizationMode.NONE;
+        final int sizeMultiplier = 1; // JOINT_DEGREE_CM 用の頂点数倍率
 
         final int batchSize = 16;
         final int itrs = 8;

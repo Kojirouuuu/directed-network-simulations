@@ -693,3 +693,19 @@ finite = build_two_point_joint_degree_dist(2, 8, 0.5, 0.5, n=1000)
 同時分布の行が入次数、列が出次数で、次数値そのものが添字です。
 Java出力は既存の `build_joint_degree_dist_from_edge_list` でも読み込めます。
 この例は設定方法を示すもので、実験実行は別途条件を確定して行います。
+
+### ボンドパーコレーションの出力
+
+`BondPercolation` は、通常のGradle実行では
+`app/out/percolation/{optionPath}/{networkPath}/randomization={mode}/` に、
+バッチごとに次の2つのCSVを保存します。
+
+- `results_00.csv`: 各試行・各辺生存確率 `p` の最大・第2最大・平均連結成分サイズなど、従来の統計値。
+- `component_sizes_00.csv`: `itr,p,component_type,size,count` のサイズ別度数。
+  `component_type` は弱連結成分が `wcc`、強連結成分が `scc` です。
+  最大成分と孤立頂点を含み、個数が正のサイズだけを昇順で保存します。
+
+分布は試行ごとの値で、平均化や正規化はしていません。
+無向グラフでは1回の探索・集計結果を共有し、`wcc` と `scc` の分布は一致します。
+既存ファイルがある場合は、両CSVで共通の空き番号を選び、
+`results_00 (1).csv` と `component_sizes_00 (1).csv` のように保存します。

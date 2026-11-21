@@ -16,9 +16,18 @@ import java.util.Random;
  */
 public final class BondPercolationSimulator {
     private final DirectedGraph g;
+    private final boolean undirectedOnly;
 
     public BondPercolationSimulator(DirectedGraph g) {
         this.g = g;
+        boolean allUndirected = true;
+        for (int e = 0; e < g.m; e++) {
+            if (!g.isOutUndirected(e)) {
+                allUndirected = false;
+                break;
+            }
+        }
+        this.undirectedOnly = allUndirected;
     }
 
     /**
@@ -89,11 +98,13 @@ public final class BondPercolationSimulator {
                         queue.add(v);
                     }
                 }
-                for (int v : adjIn[u]) {
-                    if (wccComp[v] == -1) {
-                        wccComp[v] = compId;
-                        size++;
-                        queue.add(v);
+                if (!undirectedOnly) {
+                    for (int v : adjIn[u]) {
+                        if (wccComp[v] == -1) {
+                            wccComp[v] = compId;
+                            size++;
+                            queue.add(v);
+                        }
                     }
                 }
             }
@@ -103,8 +114,10 @@ public final class BondPercolationSimulator {
         int gwccSize = 0;
         int gwccSecondSize = 0;
         long wccSizeSum = 0;
+        int[] wccSizeCounts = new int[n + 1];
         for (int i = 0; i < wccCount; i++) {
             int s = wccSizes[i];
+            wccSizeCounts[s]++;
             wccSizeSum += s;
             if (s > gwccSize) {
                 gwccSecondSize = gwccSize;
@@ -114,6 +127,13 @@ public final class BondPercolationSimulator {
             }
         }
         double gwccMeanSize = wccCount == 0 ? 0.0 : (double) wccSizeSum / wccCount;
+
+        // Every retained undirected edge is stored in both directions: WCC = SCC.
+        if (undirectedOnly) {
+            return new BondPercolationResult(n,
+                    gwccSize, gwccSecondSize, gwccMeanSize,
+                    gwccSize, gwccSecondSize, gwccMeanSize, wccSizeCounts, wccSizeCounts);
+        }
 
         // Step 3: GSCC — Kosaraju's アルゴリズム（反復 DFS）
 
@@ -176,8 +196,10 @@ public final class BondPercolationSimulator {
         int gsccSize = 0;
         int gsccSecondSize = 0;
         long sccSizeSum = 0;
+        int[] sccSizeCounts = new int[n + 1];
         for (int i = 0; i < sccCount; i++) {
             int s = sccSizes[i];
+            sccSizeCounts[s]++;
             sccSizeSum += s;
             if (s > gsccSize) {
                 gsccSecondSize = gsccSize;
@@ -190,7 +212,7 @@ public final class BondPercolationSimulator {
 
         return new BondPercolationResult(n,
                 gwccSize, gwccSecondSize, gwccMeanSize,
-                gsccSize, gsccSecondSize, gsccMeanSize);
+                gsccSize, gsccSecondSize, gsccMeanSize, wccSizeCounts, sccSizeCounts);
     }
 
     /**
