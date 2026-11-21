@@ -192,6 +192,13 @@ final class SARGraphPreparation {
         return networkPath.resolve("randomization=" + effectiveMode.pathLabel());
     }
 
+    /** Output network path shared by all simulation and graph-generation entry points. */
+    static Path buildNetworkOutputPath(SwitchUtils.GraphGeneratorParams parameters, int actualN,
+            RandomizationMode mode, int sizeMultiplier) {
+        return appendRandomizationPath(SwitchUtils.buildNetworkPath(parameters.withN(actualN)),
+                mode, sizeMultiplier);
+    }
+
     /**
      * 生成したグラフを、読み込み処理と共通のパス規約で書き出す。
      *
@@ -200,10 +207,9 @@ final class SARGraphPreparation {
      * @param config シミュレーション設定
      */
     static void writeEdgeList(DirectedGraph g, int batchIndex, SimulationConfig config) {
-        Path networkPath = SwitchUtils.buildNetworkPath(networkParameters(config).withN(g.n));
         Path edgeListPath = Paths.get("out/edgelist")
-                .resolve(appendRandomizationPath(
-                        networkPath, config.randomizationMode, config.sizeMultiplier))
+                .resolve(buildNetworkOutputPath(
+                        networkParameters(config), g.n, config.randomizationMode, config.sizeMultiplier))
                 .resolve(String.format("%d.csv", batchIndex));
         try {
             g.writeEdgeList(edgeListPath);
@@ -221,10 +227,9 @@ final class SARGraphPreparation {
      */
     static Path buildOutputDirectory(DirectedGraph g, SimulationConfig config) {
         Path outputDir = SwitchUtils.buildSimulationOutputDir(config.optionPath, config.threshold);
-        Path networkPath = SwitchUtils.buildNetworkPath(networkParameters(config).withN(g.n));
         return outputDir.resolve(
-                appendRandomizationPath(
-                        networkPath, config.randomizationMode, config.sizeMultiplier));
+                buildNetworkOutputPath(
+                        networkParameters(config), g.n, config.randomizationMode, config.sizeMultiplier));
     }
 
 }

@@ -15,6 +15,23 @@ class SAREdgeListPathTest {
     Path tempDir;
 
     @Test
+    void sharedOutputPathsPreserveTopologyAndUseActualSizeAndEffectiveRandomization() {
+        var params = sim.utils.SwitchUtils.GraphGeneratorParams.builder("BA", 100).m0(3).m(2).build();
+        assertEquals(Path.of("BA/N=80/m0=3/m=2/randomization=none"),
+                SARGraphPreparation.buildNetworkOutputPath(params, 80, SAR.RandomizationMode.NONE, 1));
+        for (SAR.RandomizationMode mode : SAR.RandomizationMode.values()) {
+            assertEquals(SAR.appendRandomizationPath(Path.of("BA/N=80/m0=3/m=2"), mode, 1),
+                    SARGraphPreparation.buildNetworkOutputPath(params, 80, mode, 1));
+        }
+        assertEquals(Path.of("BA/N=200/m0=3/m=2/randomization=joint-degree-cm"),
+                SARGraphPreparation.buildNetworkOutputPath(params, 200, SAR.RandomizationMode.JOINT_DEGREE_CM, 2));
+        var twoPoint = sim.utils.SwitchUtils.GraphGeneratorParams.builder("TwoPointDirectedCM", 100)
+                .k1(2).k2(8).p(0.5).r(0.5).build();
+        assertEquals(Path.of("TwoPointDirectedCM/N=200/k1=2/k2=8/p=0.5/r=0.5/randomization=none"),
+                SARGraphPreparation.buildNetworkOutputPath(twoPoint, 200, SAR.RandomizationMode.NONE, 1));
+    }
+
+    @Test
     void resolvesSwapEdgeListStoredUnderActualNodeCountAndExtraDirectory() throws IOException {
         Path edgeList = tempDir.resolve(
                 "rev-higgs-social/N=456626/randomization=edge-swap/reciprocity=0.010000/0.csv");

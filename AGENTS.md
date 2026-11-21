@@ -60,6 +60,8 @@ Use `SwitchUtils.GraphGeneratorParams.builder(networkType, n)` for named network
 
 When changing network types or path formats, compare Java's `SwitchUtils` with `notebooks/utils/switch.py` and, when present, `test-notebooks/utils/switch.py`. Check parameter names and order, decimal formatting, and randomization suffixes. These implementations are not fully synchronized: the `notebooks/` helper lacks `DirectedER`, and Java/Python decimal rounding can differ. Java path formatting also currently depends on the default locale. Do not assume parity without checking representative inputs and rounding boundaries.
 
+When changing network path construction, update and verify every affected entry point (`SAR`, `SPIR`, `BondPercolation`, and `GraphGen`) together. Follow SAR's path conventions and reuse `SARGraphPreparation.buildNetworkOutputPath` and its graph-loading helpers, including actual vertex counts and randomization directories. Preserve each entry point's selected network type and experiment parameters; aligning path construction does not mean selecting the same topology everywhere.
+
 ## Testing Guidelines
 
 Tests use JUnit Jupiter. Name test classes `*Test` and place them in the matching package under `app/src/test/java`. Focus tests on graph invariants, argument validation, reproducibility, and simulator edge cases. Run `./gradlew test` before submitting changes; use targeted tests during development, for example:

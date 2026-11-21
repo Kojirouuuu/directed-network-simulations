@@ -72,8 +72,8 @@ public final class SPIR {
         return config.outputRoot
                 .resolve(Path.of(
                         "spir", config.optionPath, "model=" + config.mode.name().toLowerCase(Locale.ROOT)))
-                .resolve(SARGraphPreparation.appendRandomizationPath(
-                        SwitchUtils.buildNetworkPath(config.network.withN(graph.n)), config.randomizationMode,
+                .resolve(SARGraphPreparation.buildNetworkOutputPath(
+                        config.network, graph.n, config.randomizationMode,
                         config.sizeMultiplier))
                 .resolve("phi=" + Double.toString(config.phi));
     }
@@ -145,9 +145,8 @@ public final class SPIR {
                         summary.registerBatchGraph(batch, graph.n, graph.m, directory);
                         if (config.writeEdgeList && !config.loadFromEdgeList) {
                             Path edgePath = Path.of("out", "edgelist")
-                                    .resolve(SARGraphPreparation.appendRandomizationPath(
-                                            SwitchUtils.buildNetworkPath(
-                                                    config.network.withN(graph.n)),
+                                    .resolve(SARGraphPreparation.buildNetworkOutputPath(
+                                            config.network, graph.n,
                                             config.randomizationMode, config.sizeMultiplier))
                                     .resolve(batch + ".csv");
                             graph.writeEdgeList(edgePath);

@@ -97,9 +97,9 @@ public class GraphGen {
             }
 
             // パス構成: out/edgelist/{NetworkPath}/randomization={mode}/{filename}
-            Path networkPath = SwitchUtils.buildNetworkPath(parameters.withN(g.n));
             Path outputDir = Paths.get("out/edgelist")
-                    .resolve(SwitchUtils.appendRandomizationPath(networkPath, randomizeByEdgeSwaps))
+                    .resolve(SARGraphPreparation.buildNetworkOutputPath(parameters, g.n,
+                            randomizeByEdgeSwaps ? SAR.RandomizationMode.EDGE_SWAP : SAR.RandomizationMode.NONE, 1))
                     .resolve(String.format(Locale.ROOT, "reciprocity=%.6f", targetReciprocity));
             String fileName = String.format("%d.csv", runIndex);
             Path outputPath = outputDir.resolve(fileName);
